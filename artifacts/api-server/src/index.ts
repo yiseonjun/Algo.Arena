@@ -1,5 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { attachBattleSockets, publishBattleTick } from "./lib/battle-ws";
+import { tickBattles } from "./lib/battle-store";
 
 const rawPort = process.env["PORT"];
 
@@ -15,7 +17,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+const server = app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -23,3 +25,12 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 });
+
+attachBattleSockets(server);
+
+const battleTicker = setInterval(() => {
+  for (const tick of tickBattles()) {
+    publishBattleTick(tick.roomId, tick.battle, tick.finished);
+  }
+}, 1000);
+battleTicker.unref();
