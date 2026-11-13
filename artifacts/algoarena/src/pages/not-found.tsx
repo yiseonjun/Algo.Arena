@@ -9,12 +9,12 @@ export default function NotFound() {
           <div className="flex mb-4 gap-2">
             <AlertCircle className="h-8 w-8 text-red-500" />
             <h1 className="text-2xl font-bold text-gray-900">
-              404 Page Not Found
+              페이지를 찾을 수 없습니다 (404)
             </h1>
           </div>
 
           <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
+            요청한 페이지가 없거나 주소가 잘못되었습니다.
           </p>
         </CardContent>
       </Card>

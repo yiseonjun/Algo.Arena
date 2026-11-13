@@ -48,36 +48,36 @@ def apply_limits():
 
 def validate_tree(tree, expected_function):
     if len(list(ast.walk(tree))) > MAX_AST_NODES:
-        raise ValueError("Solution is too complex for this judge.")
+        raise ValueError("코드가 채점기가 처리할 수 있는 복잡도를 초과했습니다.")
 
     function_names = {
         node.name for node in tree.body if isinstance(node, ast.FunctionDef)
     }
     if expected_function not in function_names:
-        raise ValueError("Required function is missing: " + expected_function)
+        raise ValueError("필수 함수가 없습니다: " + expected_function)
 
     for node in ast.walk(tree):
         if type(node) not in ALLOWED_NODE_TYPES:
-            raise ValueError("Unsupported Python syntax: " + type(node).__name__)
+            raise ValueError("지원하지 않는 Python 문법이 포함되어 있습니다.")
         if isinstance(node, ast.Name) and node.id.startswith("_"):
-            raise ValueError("Names beginning with underscores are not allowed.")
+            raise ValueError("밑줄(_)로 시작하는 이름은 사용할 수 없습니다.")
         if isinstance(node, ast.Attribute):
             if node.attr.startswith("_") or node.attr not in SAFE_METHODS:
-                raise ValueError("That object attribute is not available in the judge.")
+                raise ValueError("채점기에서 사용할 수 없는 객체 속성입니다.")
         if isinstance(node, ast.FunctionDef):
             if node.decorator_list or node.args.vararg or node.args.kwarg:
-                raise ValueError("Decorators and variadic arguments are not supported.")
+                raise ValueError("데코레이터와 가변 인자는 사용할 수 없습니다.")
             if node.args.kw_defaults:
-                raise ValueError("Default keyword arguments are not supported.")
+                raise ValueError("기본 키워드 인자는 사용할 수 없습니다.")
         if isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name):
                 if node.func.id not in SAFE_BUILTIN_NAMES and node.func.id not in function_names:
-                    raise ValueError("That function is not available in the judge.")
+                    raise ValueError("채점기에서 사용할 수 없는 함수입니다.")
             elif isinstance(node.func, ast.Attribute):
                 if node.func.attr not in SAFE_METHODS:
-                    raise ValueError("That method is not available in the judge.")
+                    raise ValueError("채점기에서 사용할 수 없는 메서드입니다.")
             else:
-                raise ValueError("Only direct function and safe method calls are supported.")
+                raise ValueError("함수 또는 허용된 메서드만 직접 호출할 수 있습니다.")
     return function_names
 
 
@@ -89,7 +89,7 @@ def run(payload):
     if not isinstance(code, str) or len(code) > MAX_CODE_LENGTH:
         return {
             "verdict": "CE", "passed": 0, "total": len(cases),
-            "message": "Code must be under 12,000 characters.", "output": None,
+            "message": "코드는 12,000자 이하여야 합니다.", "output": None,
         }
 
     try:
@@ -98,8 +98,8 @@ def run(payload):
     except SyntaxError as error:
         return {
             "verdict": "CE", "passed": 0, "total": len(cases),
-            "message": "Syntax error on line " + str(error.lineno or 1) + ".",
-            "output": (error.msg or "Invalid Python syntax")[:MAX_OUTPUT_LENGTH],
+            "message": str(error.lineno or 1) + "번째 줄에서 문법 오류가 발생했습니다.",
+            "output": "올바른 Python 문법인지 확인해 주세요.",
         }
     except ValueError as error:
         return {
@@ -150,23 +150,23 @@ def run(payload):
             output = json.dumps(mismatch, ensure_ascii=False, default=str)[:MAX_OUTPUT_LENGTH]
             return {
                 "verdict": "WA", "passed": passed, "total": len(cases),
-                "message": "One or more test cases did not match.",
+                "message": "일부 테스트 결과가 예상한 값과 다릅니다.",
                 "output": output,
             }
         return {
             "verdict": "AC", "passed": passed, "total": len(cases),
-            "message": "All test cases passed.",
+            "message": "모든 테스트를 통과했습니다.",
             "output": ("".join(captured) or None),
         }
     except MemoryError:
         return {
             "verdict": "MLE", "passed": 0, "total": len(cases),
-            "message": "Memory limit exceeded.", "output": None,
+            "message": "메모리 제한을 초과했습니다.", "output": None,
         }
     except Exception as error:
         return {
             "verdict": "RE", "passed": 0, "total": len(cases),
-            "message": "Your solution raised " + type(error).__name__ + ".",
+            "message": "코드를 실행하는 중 오류가 발생했습니다 (" + type(error).__name__ + ").",
             "output": str(error)[:MAX_OUTPUT_LENGTH],
         }
 
@@ -179,7 +179,7 @@ def main():
     except Exception as error:
         result = {
             "verdict": "RE", "passed": 0, "total": 0,
-            "message": "The judge could not parse this submission.",
+            "message": "제출한 코드를 채점기가 읽을 수 없습니다.",
             "output": str(error)[:MAX_OUTPUT_LENGTH],
         }
     sys.stdout.write(json.dumps(result, ensure_ascii=False, default=str))

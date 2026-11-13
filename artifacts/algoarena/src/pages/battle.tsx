@@ -13,6 +13,23 @@ function formatTime(seconds: number) {
   return `${Math.floor(safe / 60).toString().padStart(2, '0')}:${(safe % 60).toString().padStart(2, '0')}`;
 }
 
+const verdictLabels: Record<string, string> = {
+  AC: '정답',
+  WA: '오답',
+  TLE: '시간 초과',
+  MLE: '메모리 초과',
+  RE: '실행 오류',
+  CE: '코드 오류',
+};
+const difficultyLabels: Record<string, string> = {
+  BRONZE: '브론즈',
+  SILVER: '실버',
+  GOLD: '골드',
+};
+const getVerdictLabel = (verdict: string) => verdictLabels[verdict] ?? verdict;
+const getDifficultyLabel = (difficulty?: string) => difficultyLabels[difficulty ?? ''] ?? difficulty ?? '—';
+const getModeLabel = (mode?: string) => mode === 'RUN' ? '실행' : mode === 'SUBMIT' ? '제출' : mode ?? '제출';
+
 function playAttackSound() {
   try {
     const context = new AudioContext();
@@ -157,8 +174,6 @@ export default function BattlePage() {
   const finished = battle?.status === 'FINISHED';
   const secondsRemaining = battle?.secondsRemaining ?? 0;
   const winner = battle?.players.find((player) => player.id === battle.winnerPlayerId);
-  const verdictLabel = (verdict: string) => ({ AC: 'ACCEPTED', WA: 'WRONG ANSWER', TLE: 'TIME LIMIT', MLE: 'MEMORY LIMIT', RE: 'RUNTIME ERROR', CE: 'COMPILE ERROR' }[verdict] ?? verdict);
-
   const sendCode = (mode: 'RUN' | 'SUBMIT') => {
     if (!playerId || !roomId || submitCode.isPending) return;
     setResult(null);
@@ -169,7 +184,7 @@ export default function BattlePage() {
         setLiveBattle(response.battle);
         queryClient.setQueryData(getGetBattleQueryKey(roomId, playerId), (old: BattleSession | undefined) => old ? { ...old, battle: response.battle } : old);
       },
-      onError: (error) => setRequestError(error instanceof Error ? error.message : 'The judge could not process this submission.'),
+      onError: () => setRequestError('제출을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'),
     });
   };
 
@@ -183,24 +198,24 @@ export default function BattlePage() {
     }
   };
 
-  if (!playerId) return <main className="noise grid min-h-[100dvh] place-items-center bg-[#0B0E17] px-5"><div className="max-w-md rounded-2xl border border-white/10 bg-[#111622] p-7 text-center"><CircleAlert className="mx-auto text-amber-300" /><h1 className="mt-4 text-xl font-semibold">Match identity missing</h1><p className="mt-2 text-sm text-slate-400">Return to the lobby and create or join this room again.</p><button data-testid="button-return-lobby" onClick={() => setLocation('/')} className="mt-5 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold">Back to lobby</button></div></main>;
+  if (!playerId) return <main className="noise grid min-h-[100dvh] place-items-center bg-[#0B0E17] px-5"><div className="max-w-md rounded-2xl border border-white/10 bg-[#111622] p-7 text-center"><CircleAlert className="mx-auto text-amber-300" /><h1 className="mt-4 text-xl font-semibold">참가자 정보를 찾을 수 없습니다</h1><p className="mt-2 text-sm text-slate-400">대기실로 돌아가 방을 새로 만들거나 참가해 주세요.</p><button data-testid="button-return-lobby" onClick={() => setLocation('/')} className="mt-5 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold">대기실로 돌아가기</button></div></main>;
 
   if (battleQuery.isLoading) return <BattleSkeleton />;
-  if (battleQuery.isError || !battleQuery.data) return <main className="noise grid min-h-[100dvh] place-items-center bg-[#0B0E17] px-5"><div className="max-w-md rounded-2xl border border-red-400/20 bg-[#111622] p-7 text-center"><CircleAlert className="mx-auto text-red-300" /><h1 className="mt-4 text-xl font-semibold">Could not load this match</h1><p className="mt-2 text-sm text-slate-400">The room may have closed or the connection was interrupted.</p><button data-testid="button-retry-match" onClick={() => battleQuery.refetch()} className="mt-5 rounded-lg border border-white/10 px-4 py-2.5 text-sm hover:bg-white/5">Retry connection</button></div></main>;
+  if (battleQuery.isError || !battleQuery.data) return <main className="noise grid min-h-[100dvh] place-items-center bg-[#0B0E17] px-5"><div className="max-w-md rounded-2xl border border-red-400/20 bg-[#111622] p-7 text-center"><CircleAlert className="mx-auto text-red-300" /><h1 className="mt-4 text-xl font-semibold">대결 정보를 불러오지 못했습니다</h1><p className="mt-2 text-sm text-slate-400">방이 종료되었거나 연결이 끊겼을 수 있습니다.</p><button data-testid="button-retry-match" onClick={() => battleQuery.refetch()} className="mt-5 rounded-lg border border-white/10 px-4 py-2.5 text-sm hover:bg-white/5">다시 연결</button></div></main>;
 
   return (
     <main className={`noise min-h-[100dvh] bg-[#0B0E17] pb-14 md:pb-0 ${attack ? 'attack-shake' : ''}`}>
       <header className="flex h-[62px] items-center justify-between border-b border-white/[.08] bg-[#0d111c] px-4 md:px-6">
         <div className="flex items-center gap-3">
-          <button data-testid="button-back-lobby" aria-label="Back to lobby" onClick={() => setLocation('/')} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[.08] text-slate-400 transition hover:bg-white/[.05] hover:text-white"><ArrowLeft size={15} /></button>
+          <button data-testid="button-back-lobby" aria-label="대기실로 돌아가기" onClick={() => setLocation('/')} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[.08] text-slate-400 transition hover:bg-white/[.05] hover:text-white"><ArrowLeft size={15} /></button>
           <div className="grid h-8 w-8 place-items-center rounded-lg border border-blue-400/25 bg-blue-500/10 text-blue-300"><Swords size={16} /></div>
-          <div><div className="text-[12px] font-bold tracking-[.14em]">ALGO<span className="text-blue-400">ARENA</span></div><div className="mono text-[8px] tracking-[.16em] text-slate-600">LIVE DUEL</div></div>
+          <div><div className="text-[12px] font-bold tracking-[.14em]">ALGO<span className="text-blue-400">ARENA</span></div><div className="mono text-[8px] tracking-[.08em] text-slate-600">실시간 대결</div></div>
           <div className="mx-2 hidden h-7 w-px bg-white/[.08] sm:block" />
-          <div className="hidden sm:block"><div className="text-xs font-medium text-slate-200">{challenge?.title ?? 'Loading challenge…'}</div><div className="mono text-[8px] uppercase tracking-[.12em] text-slate-600">{challenge?.difficulty ?? '—'} · {challenge?.points ?? '—'} PTS</div></div>
+          <div className="hidden sm:block"><div className="text-xs font-medium text-slate-200">{challenge?.title ?? '문제 불러오는 중…'}</div><div className="mono text-[8px] tracking-[.04em] text-slate-600">{getDifficultyLabel(challenge?.difficulty)} · {challenge?.points ?? '—'}점</div></div>
         </div>
         <div className="flex items-center gap-3">
-          <button data-testid="button-copy-room" onClick={copyRoom} className="mono flex items-center gap-2 rounded-md border border-white/[.09] px-2.5 py-1.5 text-[9px] tracking-[.1em] text-slate-400 hover:border-white/20 hover:text-slate-200"><span>ROOM {roomId}</span>{copied ? <Check size={12} className="text-emerald-300" /> : <Copy size={12} />}</button>
-          <div data-testid="status-socket" className={`mono hidden items-center gap-1.5 text-[9px] uppercase tracking-[.1em] sm:flex ${socketReady ? 'text-emerald-300' : socketError ? 'text-amber-300' : 'text-slate-500'}`}>{socketReady ? <Wifi size={12} /> : <WifiOff size={12} />}{socketReady ? 'Live' : socketError ? 'Reconnecting' : 'Connecting'}</div>
+          <button data-testid="button-copy-room" aria-label="방 코드 복사" onClick={copyRoom} className="mono flex items-center gap-2 rounded-md border border-white/[.09] px-2.5 py-1.5 text-[9px] tracking-[.1em] text-slate-400 hover:border-white/20 hover:text-slate-200"><span>방 {roomId}</span>{copied ? <Check size={12} className="text-emerald-300" /> : <Copy size={12} />}</button>
+          <div data-testid="status-socket" className={`mono hidden items-center gap-1.5 text-[9px] tracking-[.06em] sm:flex ${socketReady ? 'text-emerald-300' : socketError ? 'text-amber-300' : 'text-slate-500'}`}>{socketReady ? <Wifi size={12} /> : <WifiOff size={12} />}{socketReady ? '실시간 연결' : socketError ? '재연결 중' : '연결 중'}</div>
           <div data-testid="text-match-timer" className={`mono flex min-w-[83px] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm ${secondsRemaining <= 30 ? 'border-red-400/30 bg-red-500/10 text-red-300' : 'border-white/[.09] bg-white/[.025] text-slate-100'}`}><Clock3 size={13} className={secondsRemaining <= 30 ? 'text-red-300' : 'text-blue-300'} />{formatTime(secondsRemaining)}</div>
         </div>
       </header>
@@ -208,31 +223,31 @@ export default function BattlePage() {
       <DuelStatus players={battle?.players ?? []} playerId={playerId} />
       <section className="battle-layout grid h-[calc(100dvh-132px)] min-h-[570px] grid-cols-1 md:overflow-hidden" style={{ gridTemplateColumns: `minmax(310px, ${split}fr) 10px minmax(360px, ${100 - split}fr)` }}>
         <ProblemPanel challenge={challenge} submissions={battle?.submissions ?? []} pendingSubmission={pendingRivalSubmission} loading={challengeQuery.isLoading && !challenge} />
-        <div role="separator" aria-label="Resize problem and editor panels" aria-orientation="vertical" onPointerDown={(event) => { event.preventDefault(); dragRef.current = true; }} className="group relative hidden cursor-col-resize items-center justify-center bg-[#0b0e17] md:flex"><span className="h-14 w-[3px] rounded-full bg-slate-700 transition group-hover:bg-blue-400 group-active:bg-blue-300" /></div>
+        <div role="separator" aria-label="문제와 편집기 영역 크기 조절" aria-orientation="vertical" onPointerDown={(event) => { event.preventDefault(); dragRef.current = true; }} className="group relative hidden cursor-col-resize items-center justify-center bg-[#0b0e17] md:flex"><span className="h-14 w-[3px] rounded-full bg-slate-700 transition group-hover:bg-blue-400 group-active:bg-blue-300" /></div>
         <div className="flex min-h-[650px] flex-col border-l border-white/[.07] bg-[#0e121c]">
           <div className="relative flex items-center justify-between border-b border-white/[.07] px-4 py-3">
             <div className="flex items-center gap-3"><div className="mono flex items-center gap-2 text-[10px] text-slate-300"><Code2 size={14} className="text-blue-300" />solution.py</div><span className="rounded bg-blue-500/[.1] px-1.5 py-0.5 text-[8px] text-blue-300">PYTHON 3</span></div>
-            <div className="flex items-center gap-2"><span className="mono hidden text-[9px] text-slate-600 sm:block">AUTO-SAVED LOCALLY</span><ChevronDown size={13} className="text-slate-600" /></div>
+            <div className="flex items-center gap-2"><span className="mono hidden text-[9px] text-slate-600 sm:block">기기에 자동 저장됨</span><ChevronDown size={13} className="text-slate-600" /></div>
           </div>
           <div className="relative flex min-h-0 flex-1 flex-col">
             <PythonCodeEditor value={code} onChange={setCode} />
             {attack && <div key={attack.id} className="heart-hit pointer-events-none absolute right-9 top-10 z-10 flex items-center gap-1.5 rounded-full border border-red-300/20 bg-red-500/15 px-3 py-1.5 text-sm font-bold text-red-300"><Heart size={15} fill="currentColor" />-{attack.damage}</div>}
           </div>
-          <ResultPanel result={result} pending={submitCode.isPending} error={requestError} verdictLabel={verdictLabel} />
+          <ResultPanel result={result} pending={submitCode.isPending} error={requestError} verdictLabel={getVerdictLabel} />
           <div className="flex items-center justify-between border-t border-white/[.07] px-4 py-3">
-            <div className="mono flex items-center gap-2 text-[9px] text-slate-600"><span className="text-slate-500">PYTHON 3</span><span>·</span><span>READY TO RUN</span></div>
+            <div className="mono flex items-center gap-2 text-[9px] text-slate-600"><span className="text-slate-500">PYTHON 3</span><span>·</span><span>실행 준비 완료</span></div>
             <div className="flex gap-2">
-              <button data-testid="button-run-code" disabled={submitCode.isPending || battle?.status !== 'ACTIVE'} onClick={() => sendCode('RUN')} className="flex h-9 items-center gap-2 rounded-lg border border-white/[.11] px-3 text-xs font-semibold text-slate-300 transition hover:bg-white/[.05] disabled:opacity-40"><Zap size={13} />Run</button>
-              <button data-testid="button-submit-code" disabled={submitCode.isPending || battle?.status !== 'ACTIVE'} onClick={() => sendCode('SUBMIT')} className="flex h-9 items-center gap-2 rounded-lg bg-blue-500 px-4 text-xs font-bold text-white transition hover:bg-blue-400 disabled:opacity-40">{submitCode.isPending ? <LoaderCircle size={14} className="animate-spin" /> : <Send size={13} />}{battle?.status === 'WAITING' ? 'Waiting for rival' : finished ? 'Match over' : 'Submit'}</button>
+              <button data-testid="button-run-code" disabled={submitCode.isPending || battle?.status !== 'ACTIVE'} onClick={() => sendCode('RUN')} className="flex h-9 items-center gap-2 rounded-lg border border-white/[.11] px-3 text-xs font-semibold text-slate-300 transition hover:bg-white/[.05] disabled:opacity-40"><Zap size={13} />실행</button>
+              <button data-testid="button-submit-code" disabled={submitCode.isPending || battle?.status !== 'ACTIVE'} onClick={() => sendCode('SUBMIT')} className="flex h-9 items-center gap-2 rounded-lg bg-blue-500 px-4 text-xs font-bold text-white transition hover:bg-blue-400 disabled:opacity-40">{submitCode.isPending ? <LoaderCircle size={14} className="animate-spin" /> : <Send size={13} />}{battle?.status === 'WAITING' ? '상대 참가 대기 중' : finished ? '대결 종료' : '제출'}</button>
             </div>
           </div>
         </div>
       </section>
 
       <div className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-between border-t border-white/[.08] bg-[#0d111c]/95 px-4 py-2 backdrop-blur md:hidden">
-        <PlayerStrip player={me} label="YOU" tone="blue" />
+        <PlayerStrip player={me} label="나" tone="blue" />
         <div className="mono text-xs text-slate-300">{formatTime(battle?.secondsRemaining ?? 0)}</div>
-        <PlayerStrip player={rival} label="RIVAL" tone="purple" />
+        <PlayerStrip player={rival} label="상대" tone="purple" />
       </div>
       {finished && <ResultOverlay winner={winner} me={me} elapsedSeconds={battle?.elapsedSeconds ?? 0} onLobby={() => setLocation('/')} onReplay={() => setLocation('/')} />}
     </main>
@@ -242,24 +257,24 @@ export default function BattlePage() {
 function ProblemPanel({ challenge, submissions, pendingSubmission, loading }: { challenge?: BattleSession['challenge']; submissions: Battle['submissions']; pendingSubmission: { playerId: string; mode?: string } | null; loading: boolean }) {
   const [tab, setTab] = useState<'problem' | 'examples' | 'submissions'>('problem');
   return <aside className="flex min-h-[360px] flex-col overflow-y-auto border-r border-white/[.07] bg-[#101520] pb-16 md:pb-5">
-    <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-purple-400" /><span className="mono text-[9px] uppercase tracking-[.18em] text-slate-400">Challenge brief</span></div><div className="mono text-[9px] text-slate-600">MATCH RULES / 01</div></div>
-    {loading ? <div className="space-y-4 p-6"><div className="h-5 w-2/3 animate-pulse rounded bg-white/[.06]" /><div className="h-20 animate-pulse rounded bg-white/[.04]" /><div className="h-32 animate-pulse rounded bg-white/[.04]" /></div> : !challenge ? <div className="p-6 text-sm text-slate-500">Challenge details are unavailable.</div> :
+    <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-purple-400" /><span className="mono text-[9px] tracking-[.08em] text-slate-400">문제 안내</span></div><div className="mono text-[9px] text-slate-600">대결 규칙 / 01</div></div>
+    {loading ? <div className="space-y-4 p-6"><div className="h-5 w-2/3 animate-pulse rounded bg-white/[.06]" /><div className="h-20 animate-pulse rounded bg-white/[.04]" /><div className="h-32 animate-pulse rounded bg-white/[.04]" /></div> : !challenge ? <div className="p-6 text-sm text-slate-500">문제 정보를 불러올 수 없습니다.</div> :
       <div className="p-5 md:p-6">
-        <div className="mono text-[9px] uppercase tracking-[.15em] text-blue-300">Algorithm / Python</div>
+        <div className="mono text-[9px] tracking-[.05em] text-blue-300">알고리즘 · Python</div>
         <h1 data-testid="text-challenge-title" className="mt-2 text-[26px] font-semibold leading-tight tracking-[-.04em] text-slate-100">{challenge.title}</h1>
         <p className="mt-3 text-[13px] leading-6 text-slate-400">{challenge.summary}</p>
-        <div className="mt-5 grid grid-cols-2 gap-2"><div className="rounded-lg border border-white/[.07] bg-white/[.02] p-3"><div className="mono text-[8px] uppercase tracking-[.15em] text-slate-600">Difficulty</div><div className="mt-1 text-xs font-semibold text-slate-200">{challenge.difficulty}</div></div><div className="rounded-lg border border-white/[.07] bg-white/[.02] p-3"><div className="mono text-[8px] uppercase tracking-[.15em] text-slate-600">Battle value</div><div className="mt-1 text-xs font-semibold text-blue-300">{challenge.points} points</div></div></div>
-         <div className="mt-6 flex border-b border-white/[.08]"><button data-testid="tab-problem" onClick={() => setTab('problem')} className={`mono border-b-2 px-3 pb-2 text-[9px] uppercase tracking-[.12em] ${tab === 'problem' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>Problem</button><button data-testid="tab-examples" onClick={() => setTab('examples')} className={`mono border-b-2 px-3 pb-2 text-[9px] uppercase tracking-[.12em] ${tab === 'examples' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>Examples</button><button data-testid="tab-submissions" onClick={() => setTab('submissions')} className={`mono border-b-2 px-3 pb-2 text-[9px] uppercase tracking-[.12em] ${tab === 'submissions' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>Submissions <span className="ml-1 text-slate-500">{submissions.length}</span></button></div>
+        <div className="mt-5 grid grid-cols-2 gap-2"><div className="rounded-lg border border-white/[.07] bg-white/[.02] p-3"><div className="mono text-[8px] tracking-[.04em] text-slate-600">난이도</div><div className="mt-1 text-xs font-semibold text-slate-200">{getDifficultyLabel(challenge.difficulty)}</div></div><div className="rounded-lg border border-white/[.07] bg-white/[.02] p-3"><div className="mono text-[8px] tracking-[.04em] text-slate-600">획득 점수</div><div className="mt-1 text-xs font-semibold text-blue-300">{challenge.points}점</div></div></div>
+         <div className="mt-6 flex border-b border-white/[.08]"><button data-testid="tab-problem" onClick={() => setTab('problem')} className={`mono border-b-2 px-3 pb-2 text-[9px] tracking-[.04em] ${tab === 'problem' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>문제</button><button data-testid="tab-examples" onClick={() => setTab('examples')} className={`mono border-b-2 px-3 pb-2 text-[9px] tracking-[.04em] ${tab === 'examples' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>예시</button><button data-testid="tab-submissions" onClick={() => setTab('submissions')} className={`mono border-b-2 px-3 pb-2 text-[9px] tracking-[.04em] ${tab === 'submissions' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>제출 기록 <span className="ml-1 text-slate-500">{submissions.length}</span></button></div>
          {tab === 'problem' ? <div className="space-y-5 pt-5">
-          <section><h2 className="mono mb-2 text-[9px] uppercase tracking-[.16em] text-slate-500">Description</h2><p className="whitespace-pre-line text-[12px] leading-[1.8] text-slate-300">{challenge.description}</p></section>
-          <section><h2 className="mono mb-2 text-[9px] uppercase tracking-[.16em] text-slate-500">Input format</h2><p className="whitespace-pre-line text-[11px] leading-5 text-slate-400">{challenge.inputFormat}</p></section>
-          <section><h2 className="mono mb-2 text-[9px] uppercase tracking-[.16em] text-slate-500">Output format</h2><p className="whitespace-pre-line text-[11px] leading-5 text-slate-400">{challenge.outputFormat}</p></section>
-          <section><h2 className="mono mb-2 text-[9px] uppercase tracking-[.16em] text-slate-500">Constraints</h2><ul className="space-y-1">{challenge.constraints.map((constraint, index) => <li key={index} className="mono text-[10px] leading-5 text-slate-400"><span className="mr-2 text-purple-400">/</span>{constraint}</li>)}</ul></section>
-         </div> : tab === 'examples' ? <div className="space-y-3 pt-4">{challenge.examples.map((example, index) => <div key={index} className="rounded-lg border border-white/[.07] bg-[#0c111b] p-3.5"><div className="mono mb-3 text-[9px] uppercase tracking-[.13em] text-purple-300">Example {String(index + 1).padStart(2, '0')}</div><div className="grid grid-cols-[48px_1fr] gap-y-2 text-[10px]"><span className="mono text-slate-600">Input</span><code className="mono whitespace-pre-wrap text-slate-300">{example.input}</code><span className="mono text-slate-600">Output</span><code className="mono whitespace-pre-wrap text-emerald-300">{example.output}</code></div>{example.explanation && <p className="mt-3 border-t border-white/[.06] pt-2 text-[10px] leading-5 text-slate-500">{example.explanation}</p>}</div>)}</div> : <div className="space-y-2 pt-4">
-           {pendingSubmission && <div data-testid="status-opponent-submitting" className="flex items-center gap-2 rounded-lg border border-blue-400/20 bg-blue-500/[.06] px-3 py-2.5 text-[10px] text-blue-200"><LoaderCircle size={12} className="animate-spin" />Rival submitted · {pendingSubmission.mode ?? 'SUBMIT'} in review</div>}
-           {submissions.length === 0 && !pendingSubmission ? <div className="rounded-lg border border-dashed border-white/[.08] px-4 py-6 text-center text-[10px] text-slate-600">No submissions yet. The first move is yours.</div> : submissions.map((entry) => <div key={entry.id} data-testid={`row-submission-${entry.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-white/[.06] bg-[#0c111b] px-3 py-2.5">
-             <div className="min-w-0"><div className="truncate text-[11px] font-medium text-slate-300">{entry.playerName}</div><div className="mono mt-1 text-[8px] uppercase tracking-[.1em] text-slate-600">{entry.mode} · {new Date(String(entry.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div></div>
-             <span className={`mono shrink-0 rounded border px-2 py-1 text-[8px] tracking-[.1em] ${entry.verdict === 'AC' ? 'border-emerald-400/20 bg-emerald-500/[.06] text-emerald-300' : 'border-red-400/20 bg-red-500/[.06] text-red-300'}`}>{entry.verdict}</span>
+           <section><h2 className="mono mb-2 text-[9px] tracking-[.04em] text-slate-500">문제 설명</h2><p className="whitespace-pre-line text-[12px] leading-[1.8] text-slate-300">{challenge.description}</p></section>
+           <section><h2 className="mono mb-2 text-[9px] tracking-[.04em] text-slate-500">입력 형식</h2><p className="whitespace-pre-line text-[11px] leading-5 text-slate-400">{challenge.inputFormat}</p></section>
+           <section><h2 className="mono mb-2 text-[9px] tracking-[.04em] text-slate-500">출력 형식</h2><p className="whitespace-pre-line text-[11px] leading-5 text-slate-400">{challenge.outputFormat}</p></section>
+           <section><h2 className="mono mb-2 text-[9px] tracking-[.04em] text-slate-500">제한 조건</h2><ul className="space-y-1">{challenge.constraints.map((constraint, index) => <li key={index} className="mono text-[10px] leading-5 text-slate-400"><span className="mr-2 text-purple-400">/</span>{constraint}</li>)}</ul></section>
+          </div> : tab === 'examples' ? <div className="space-y-3 pt-4">{challenge.examples.map((example, index) => <div key={index} className="rounded-lg border border-white/[.07] bg-[#0c111b] p-3.5"><div className="mono mb-3 text-[9px] tracking-[.04em] text-purple-300">예시 {String(index + 1).padStart(2, '0')}</div><div className="grid grid-cols-[48px_1fr] gap-y-2 text-[10px]"><span className="mono text-slate-600">입력</span><code className="mono whitespace-pre-wrap text-slate-300">{example.input}</code><span className="mono text-slate-600">출력</span><code className="mono whitespace-pre-wrap text-emerald-300">{example.output}</code></div>{example.explanation && <p className="mt-3 border-t border-white/[.06] pt-2 text-[10px] leading-5 text-slate-500">{example.explanation}</p>}</div>)}</div> : <div className="space-y-2 pt-4">
+            {pendingSubmission && <div data-testid="status-opponent-submitting" className="flex items-center gap-2 rounded-lg border border-blue-400/20 bg-blue-500/[.06] px-3 py-2.5 text-[10px] text-blue-200"><LoaderCircle size={12} className="animate-spin" />상대가 코드를 제출했습니다 · {getModeLabel(pendingSubmission.mode)} 검토 중</div>}
+            {submissions.length === 0 && !pendingSubmission ? <div className="rounded-lg border border-dashed border-white/[.08] px-4 py-6 text-center text-[10px] text-slate-600">아직 제출한 코드가 없습니다. 먼저 도전해 보세요.</div> : submissions.map((entry) => <div key={entry.id} data-testid={`row-submission-${entry.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-white/[.06] bg-[#0c111b] px-3 py-2.5">
+              <div className="min-w-0"><div className="truncate text-[11px] font-medium text-slate-300">{entry.playerName}</div><div className="mono mt-1 text-[8px] tracking-[.04em] text-slate-600">{getModeLabel(entry.mode)} · {new Date(String(entry.createdAt)).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div></div>
+              <span className={`mono shrink-0 rounded border px-2 py-1 text-[8px] tracking-[.04em] ${entry.verdict === 'AC' ? 'border-emerald-400/20 bg-emerald-500/[.06] text-emerald-300' : 'border-red-400/20 bg-red-500/[.06] text-red-300'}`}>{getVerdictLabel(entry.verdict)}</span>
            </div>)}
          </div>}
       </div>}
@@ -270,13 +285,13 @@ function DuelStatus({ players, playerId }: { players: Battle['players']; playerI
   const me = players.find((player) => player.id === playerId);
   const rival = players.find((player) => player.id !== playerId);
   return <section className="flex h-[70px] items-center justify-center gap-5 border-b border-white/[.07] bg-[#0d111b] px-4 md:gap-12">
-    <DuelContender player={me} side="left" label="YOU" />
+      <DuelContender player={me} side="left" label="나" />
     <div className="flex items-center gap-2">
       <div className="h-px w-5 bg-gradient-to-r from-transparent to-slate-700 md:w-10" />
-      <span className="mono text-[9px] font-medium tracking-[.2em] text-slate-600">VS</span>
+      <span className="mono text-[9px] font-medium tracking-[.08em] text-slate-600">대</span>
       <div className="h-px w-5 bg-gradient-to-l from-transparent to-slate-700 md:w-10" />
     </div>
-    <DuelContender player={rival} side="right" label="RIVAL" />
+      <DuelContender player={rival} side="right" label="상대" />
   </section>;
 }
 
@@ -284,8 +299,8 @@ function DuelContender({ player, side, label }: { player?: Battle['players'][num
   const tone = side === 'left' ? 'text-blue-300' : 'text-purple-300';
   const alignment = side === 'left' ? 'items-start text-left' : 'items-end text-right';
   return <div className={`flex min-w-[112px] flex-col ${alignment}`}>
-    <div className="flex items-center gap-1.5"><span className={`h-1.5 w-1.5 rounded-full ${player?.connected ? 'bg-emerald-400' : player ? 'bg-amber-400' : 'bg-slate-700'}`} /><span className="mono max-w-[130px] truncate text-[9px] uppercase tracking-[.12em] text-slate-500">{label} / {player?.name ?? 'WAITING FOR RIVAL'}</span></div>
-    <div className="mt-1 flex items-center gap-2"><div className="flex gap-[3px]">{Array.from({ length: 3 }, (_, index) => <Heart key={index} size={11} className={index < (player?.hearts ?? 0) ? 'fill-red-400 text-red-400' : 'text-slate-700'} />)}</div><span className={`mono text-[9px] ${tone}`}>{player?.points ?? 0} PTS</span></div>
+    <div className="flex items-center gap-1.5"><span className={`h-1.5 w-1.5 rounded-full ${player?.connected ? 'bg-emerald-400' : player ? 'bg-amber-400' : 'bg-slate-700'}`} /><span className="mono max-w-[130px] truncate text-[9px] tracking-[.04em] text-slate-500">{label} / {player?.name ?? '상대 대기 중'}</span></div>
+    <div className="mt-1 flex items-center gap-2"><div className="flex gap-[3px]">{Array.from({ length: 3 }, (_, index) => <Heart key={index} size={11} className={index < (player?.hearts ?? 0) ? 'fill-red-400 text-red-400' : 'text-slate-700'} />)}</div><span className={`mono text-[9px] ${tone}`}>{player?.points ?? 0}점</span></div>
   </div>;
 }
 
@@ -338,17 +353,17 @@ function PythonCodeEditor({ value, onChange }: { value: string; onChange: (value
 
 function ResultPanel({ result, pending, error, verdictLabel }: { result: SubmissionResult | null; pending: boolean; error: string; verdictLabel: (verdict: string) => string }) {
   return <div className="min-h-[125px] border-t border-white/[.07] bg-[#0b0f18] px-4 py-3">
-    <div className="mb-2 flex items-center justify-between"><div className="mono flex items-center gap-2 text-[9px] uppercase tracking-[.15em] text-slate-500"><Radio size={12} className="text-blue-300" />Judge output</div>{pending && <span className="mono flex items-center gap-1.5 text-[9px] text-blue-300"><LoaderCircle size={11} className="animate-spin" />Evaluating</span>}</div>
+    <div className="mb-2 flex items-center justify-between"><div className="mono flex items-center gap-2 text-[9px] tracking-[.04em] text-slate-500"><Radio size={12} className="text-blue-300" />채점 결과</div>{pending && <span className="mono flex items-center gap-1.5 text-[9px] text-blue-300"><LoaderCircle size={11} className="animate-spin" />채점 중</span>}</div>
     {error ? <p data-testid="text-judge-error" className="text-xs text-red-300">{error}</p> : result ? <div data-testid="status-verdict" className="flex items-start justify-between gap-3">
       <div><div className={`text-xs font-bold tracking-wide ${result.verdict === 'AC' ? 'text-emerald-300' : 'text-red-300'}`}>{verdictLabel(result.verdict)}</div><p className="mt-1 text-[10px] leading-4 text-slate-400">{result.message}</p>{result.output && <pre className="mono mt-2 max-h-12 overflow-auto whitespace-pre-wrap text-[9px] text-slate-500">{result.output}</pre>}</div>
-      <div className="mono shrink-0 text-right text-[9px] text-slate-500"><div>{result.passed}/{result.total} tests</div><div className="mt-1">{result.runtimeMs} ms</div>{result.damageDealt > 0 && <div className="mt-1 text-red-300">−{result.damageDealt} HP</div>}</div>
-    </div> : <div className="flex h-[68px] items-center text-[11px] text-slate-600">{pending ? 'Your code is being judged…' : 'Run against public tests or submit to attack your rival.'}</div>}
+      <div className="mono shrink-0 text-right text-[9px] text-slate-500"><div>{result.passed}/{result.total}개 테스트</div><div className="mt-1">{result.runtimeMs}ms</div>{result.damageDealt > 0 && <div className="mt-1 text-red-300">상대에게 −{result.damageDealt} 피해</div>}</div>
+    </div> : <div className="flex h-[68px] items-center text-[11px] text-slate-600">{pending ? '코드를 채점하고 있습니다…' : '공개 테스트를 실행하거나 제출해 상대를 공격하세요.'}</div>}
   </div>;
 }
 
 function PlayerStrip({ player, label, tone }: { player?: Battle['players'][number]; label: string; tone: 'blue' | 'purple' }) {
   const color = tone === 'blue' ? 'text-blue-300' : 'text-purple-300';
-  return <div className="min-w-0"><div className="mono truncate text-[8px] tracking-[.12em] text-slate-600">{label} · {player?.name ?? 'WAITING'}</div><div className="mt-1 flex items-center gap-2"><span className={`mono text-[10px] ${color}`}>{player?.points ?? 0} PTS</span><div className="flex gap-0.5">{Array.from({ length: 3 }, (_, index) => <Heart key={index} size={10} className={index < (player?.hearts ?? 0) ? 'fill-red-400 text-red-400' : 'text-slate-700'} />)}</div></div></div>;
+  return <div className="min-w-0"><div className="mono truncate text-[8px] tracking-[.04em] text-slate-600">{label} · {player?.name ?? '대기 중'}</div><div className="mt-1 flex items-center gap-2"><span className={`mono text-[10px] ${color}`}>{player?.points ?? 0}점</span><div className="flex gap-0.5">{Array.from({ length: 3 }, (_, index) => <Heart key={index} size={10} className={index < (player?.hearts ?? 0) ? 'fill-red-400 text-red-400' : 'text-slate-700'} />)}</div></div></div>;
 }
 
 function ResultOverlay({ winner, me, elapsedSeconds, onLobby, onReplay }: { winner?: Battle['players'][number]; me?: Battle['players'][number]; elapsedSeconds: number; onLobby: () => void; onReplay: () => void }) {
@@ -356,16 +371,16 @@ function ResultOverlay({ winner, me, elapsedSeconds, onLobby, onReplay }: { winn
   return <div className="fixed inset-0 z-40 grid place-items-center bg-[#080a11]/85 p-5 backdrop-blur-sm"><div className="relative w-full max-w-[430px] overflow-hidden rounded-2xl border border-white/[.12] bg-[#111622] p-8 text-center shadow-2xl">
     <div className={`absolute inset-x-0 top-0 h-[2px] ${won ? 'bg-blue-400' : 'bg-purple-400'}`} />
     <div className={`mx-auto grid h-14 w-14 place-items-center rounded-2xl border ${won ? 'border-blue-400/30 bg-blue-500/10 text-blue-300' : 'border-purple-400/30 bg-purple-500/10 text-purple-300'}`}><Swords size={24} /></div>
-    <div className="mono mt-5 text-[9px] uppercase tracking-[.24em] text-slate-500">Match complete</div>
-    <h2 data-testid="text-match-result" className="mt-2 text-4xl font-bold tracking-[-.06em] text-slate-100">{won ? 'Victory.' : winner ? 'Defeated.' : 'Draw.'}</h2>
-    <p className="mt-2 text-sm text-slate-400">{winner ? `${winner.name} takes the round.` : 'Neither contender claimed the round.'}</p>
+    <div className="mono mt-5 text-[9px] tracking-[.08em] text-slate-500">대결 종료</div>
+    <h2 data-testid="text-match-result" className="mt-2 text-4xl font-bold tracking-[-.06em] text-slate-100">{won ? '승리!' : winner ? '패배' : '무승부'}</h2>
+    <p className="mt-2 text-sm text-slate-400">{winner ? `${winner.name} 님이 대결에서 승리했습니다.` : '이번 대결은 무승부입니다.'}</p>
     <div className="my-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[.07] bg-white/[.08]">
-      <div className="bg-[#111622] py-3"><div className="mono text-[8px] uppercase tracking-[.15em] text-slate-600">Points earned</div><div data-testid="text-final-points" className="mt-1 text-xl font-semibold text-blue-300">{me?.points ?? 0}</div></div>
-      <div className="bg-[#111622] py-3"><div className="mono text-[8px] uppercase tracking-[.15em] text-slate-600">Final hearts</div><div className="mt-1 text-xl font-semibold text-red-300">{me?.hearts ?? 0}<span className="ml-1 text-xs text-slate-500">/ 3</span></div></div>
-      <div className="bg-[#111622] py-3"><div className="mono text-[8px] uppercase tracking-[.15em] text-slate-600">Total time</div><div data-testid="text-final-time" className="mt-1 text-sm font-semibold text-slate-200">{formatTime(elapsedSeconds)}</div></div>
-      <div className="bg-[#111622] py-3"><div className="mono text-[8px] uppercase tracking-[.15em] text-slate-600">Submissions</div><div data-testid="text-final-submissions" className="mt-1 text-sm font-semibold text-slate-200">{me?.submissions ?? 0}</div></div>
+      <div className="bg-[#111622] py-3"><div className="mono text-[8px] tracking-[.04em] text-slate-600">획득 점수</div><div data-testid="text-final-points" className="mt-1 text-xl font-semibold text-blue-300">{me?.points ?? 0}점</div></div>
+      <div className="bg-[#111622] py-3"><div className="mono text-[8px] tracking-[.04em] text-slate-600">남은 하트</div><div className="mt-1 text-xl font-semibold text-red-300">{me?.hearts ?? 0}<span className="ml-1 text-xs text-slate-500">/ 3</span></div></div>
+      <div className="bg-[#111622] py-3"><div className="mono text-[8px] tracking-[.04em] text-slate-600">경과 시간</div><div data-testid="text-final-time" className="mt-1 text-sm font-semibold text-slate-200">{formatTime(elapsedSeconds)}</div></div>
+      <div className="bg-[#111622] py-3"><div className="mono text-[8px] tracking-[.04em] text-slate-600">제출 횟수</div><div data-testid="text-final-submissions" className="mt-1 text-sm font-semibold text-slate-200">{me?.submissions ?? 0}회</div></div>
     </div>
-    <div className="flex gap-2"><button data-testid="button-result-lobby" onClick={onLobby} className="flex-1 rounded-lg border border-white/[.11] px-4 py-3 text-xs font-semibold text-slate-300 hover:bg-white/[.04]">Return to lobby</button><button data-testid="button-result-replay" onClick={onReplay} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-3 text-xs font-bold text-white hover:bg-blue-400"><RotateCcw size={13} />Choose another challenge</button></div>
+    <div className="flex gap-2"><button data-testid="button-result-lobby" onClick={onLobby} className="flex-1 rounded-lg border border-white/[.11] px-4 py-3 text-xs font-semibold text-slate-300 hover:bg-white/[.04]">대기실로</button><button data-testid="button-result-replay" onClick={onReplay} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-3 text-xs font-bold text-white hover:bg-blue-400"><RotateCcw size={13} />다른 문제 선택</button></div>
   </div></div>;
 }
 

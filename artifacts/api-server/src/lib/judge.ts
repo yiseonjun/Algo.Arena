@@ -39,7 +39,7 @@ export async function judgePython(
       passed: 0,
       total: 0,
       runtimeMs: 0,
-      message: "This challenge has no test suite configured.",
+      message: "이 문제에는 테스트가 설정되어 있지 않습니다.",
       output: null,
     };
   }
@@ -60,10 +60,10 @@ export async function judgePython(
       runtimeMs: Math.max(1, Math.round(performance.now() - startedAt)),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "The judge could not start.";
-    const verdict: SubmissionResult["verdict"] = message.includes("timed out")
+    const message = error instanceof Error ? error.message : "채점기를 시작하지 못했습니다.";
+    const verdict: SubmissionResult["verdict"] = message.includes("시간이 초과")
       ? "TLE"
-      : message.includes("memory limit")
+      : message.includes("메모리 제한")
         ? "MLE"
         : "RE";
     logger.warn(
@@ -77,10 +77,10 @@ export async function judgePython(
       runtimeMs: Math.max(1, Math.round(performance.now() - startedAt)),
       message:
         verdict === "TLE"
-          ? "Time limit exceeded. Check for loops that never finish."
+          ? "시간 초과입니다. 끝나지 않는 반복문이 있는지 확인해 주세요."
           : verdict === "MLE"
-            ? "Memory limit exceeded."
-            : "The Python runner could not execute this solution.",
+            ? "메모리 제한을 초과했습니다."
+            : "Python 실행기가 코드를 실행하지 못했습니다.",
       output: null,
     };
   } finally {
@@ -123,7 +123,7 @@ function runIsolated({ workspace, payload }: RunInput): Promise<RunnerResponse> 
 
     const timer = setTimeout(() => {
       python.kill("SIGKILL");
-      settle(() => reject(new Error("Python execution timed out.")));
+      settle(() => reject(new Error("Python 실행 시간이 초과되었습니다.")));
     }, RUN_TIMEOUT_MS);
 
     python.stdout.setEncoding("utf8");
@@ -132,7 +132,7 @@ function runIsolated({ workspace, payload }: RunInput): Promise<RunnerResponse> 
       stdout += chunk;
       if (stdout.length > MAX_STDOUT_CHARS) {
         python.kill("SIGKILL");
-        settle(() => reject(new Error("Judge output exceeded the memory limit.")));
+        settle(() => reject(new Error("채점 결과가 메모리 제한을 초과했습니다.")));
       }
     });
     python.stderr.on("data", (chunk: string) => {
@@ -142,18 +142,18 @@ function runIsolated({ workspace, payload }: RunInput): Promise<RunnerResponse> 
     python.on("close", (exitCode, signal) => {
       if (settled) return;
       if (signal === "SIGKILL" || signal === "SIGXCPU") {
-        settle(() => reject(new Error("Python execution timed out.")));
+        settle(() => reject(new Error("Python 실행 시간이 초과되었습니다.")));
         return;
       }
       if (exitCode !== 0) {
-        settle(() => reject(new Error(stderr || `Python exited with code ${exitCode}.`)));
+        settle(() => reject(new Error(stderr || `Python 실행이 종료되었습니다 (코드 ${exitCode}).`)));
         return;
       }
       try {
         const result = JSON.parse(stdout) as RunnerResponse;
         settle(() => resolve(result));
       } catch {
-        settle(() => reject(new Error("The judge returned an invalid response.")));
+        settle(() => reject(new Error("채점기가 올바르지 않은 결과를 반환했습니다.")));
       }
     });
 

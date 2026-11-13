@@ -8,93 +8,93 @@ export interface JudgeTestCase {
 const challengeData: Challenge[] = [
   {
     id: "two-sum",
-    title: "Find the Pair",
+    title: "두 수의 합",
     difficulty: "BRONZE",
     points: 100,
-    summary: "Find two indices whose values add up to the target.",
+    summary: "목표값을 만드는 두 수의 인덱스를 찾으세요.",
     description:
-      "Given an integer list and a target, return the indices of two distinct numbers that add up to the target. Exactly one valid answer exists, and you may not use the same element twice.",
-    inputFormat: "Your function receives nums: list[int] and target: int.",
-    outputFormat: "Return a two-item list containing the matching indices.",
+      "정수 목록과 목표값이 주어집니다. 합이 목표값과 같은 서로 다른 두 수의 인덱스를 반환하세요. 정답은 정확히 하나이며 같은 원소를 두 번 사용할 수 없습니다.",
+    inputFormat: "함수 인자로 nums: list[int], target: int이 전달됩니다.",
+    outputFormat: "조건을 만족하는 인덱스 두 개를 리스트로 반환하세요.",
     examples: [
       {
         input: "nums = [2, 7, 11, 15], target = 9",
         output: "[0, 1]",
-        explanation: "nums[0] + nums[1] equals 9.",
+        explanation: "nums[0] + nums[1]의 결과는 9입니다.",
       },
       {
         input: "nums = [3, 2, 4], target = 6",
         output: "[1, 2]",
-        explanation: "The values 2 and 4 add up to 6.",
+        explanation: "값 2와 4를 더하면 6입니다.",
       },
     ],
     constraints: [
       "2 <= len(nums) <= 100,000",
-      "Each input has exactly one solution.",
-      "Return indices in any order.",
+      "각 입력에는 정답이 정확히 하나 있습니다.",
+      "인덱스는 어떤 순서로 반환해도 됩니다.",
     ],
     starterCode:
-      "def two_sum(nums, target):\n    # Return the indices of two values that add up to target.\n    pass\n",
+      "def two_sum(nums, target):\n    # 합이 목표값과 같은 두 수의 인덱스를 반환하세요.\n    pass\n",
     functionName: "two_sum",
   },
   {
     id: "valid-parentheses",
-    title: "Bracket Check",
+    title: "괄호 짝 맞추기",
     difficulty: "SILVER",
     points: 200,
-    summary: "Decide whether every bracket closes in the right order.",
+    summary: "모든 괄호가 올바른 순서로 닫히는지 확인하세요.",
     description:
-      "Given a string containing only (), {}, and [], determine whether the brackets are balanced. Each opening bracket must be closed by the same type, in the correct order.",
-    inputFormat: "Your function receives s: str.",
-    outputFormat: "Return True when all brackets are balanced; otherwise return False.",
+      "(), {}, []로만 이루어진 문자열이 주어집니다. 괄호가 올바르게 짝을 이루는지 판단하세요. 여는 괄호는 같은 종류의 닫는 괄호로 올바른 순서에 맞게 닫혀야 합니다.",
+    inputFormat: "함수 인자로 s: str이 전달됩니다.",
+    outputFormat: "괄호가 모두 올바르게 짝을 이루면 True, 그렇지 않으면 False를 반환하세요.",
     examples: [
       {
         input: 's = "([])"',
         output: "True",
-        explanation: "Every opening bracket is closed in last-in, first-out order.",
+        explanation: "모든 여는 괄호가 마지막에 열린 순서부터 닫힙니다.",
       },
       {
         input: 's = "([)]"',
         output: "False",
-        explanation: "The square bracket closes before the parenthesis.",
+        explanation: "대괄호가 소괄호보다 먼저 닫혀 순서가 맞지 않습니다.",
       },
     ],
     constraints: [
       "0 <= len(s) <= 10,000",
-      "s contains only bracket characters.",
+      "s에는 괄호 문자만 들어 있습니다.",
     ],
     starterCode:
-      "def is_valid_parentheses(s):\n    # Return True only when the brackets are balanced.\n    pass\n",
+      "def is_valid_parentheses(s):\n    # 괄호가 모두 올바르게 짝을 이루는지 반환하세요.\n    pass\n",
     functionName: "is_valid_parentheses",
   },
   {
     id: "longest-substring",
-    title: "Unique Window",
+    title: "중복 없는 가장 긴 부분 문자열",
     difficulty: "GOLD",
     points: 300,
-    summary: "Find the longest substring with no repeated characters.",
+    summary: "문자가 반복되지 않는 가장 긴 부분 문자열의 길이를 구하세요.",
     description:
-      "Given a string s, return the length of its longest contiguous substring that contains no repeated characters.",
-    inputFormat: "Your function receives s: str.",
-    outputFormat: "Return the maximum substring length as an integer.",
+      "문자열 s가 주어집니다. 같은 문자가 반복되지 않는 연속 부분 문자열 중 가장 긴 것의 길이를 반환하세요.",
+    inputFormat: "함수 인자로 s: str이 전달됩니다.",
+    outputFormat: "가장 긴 부분 문자열의 길이를 정수로 반환하세요.",
     examples: [
       {
         input: 's = "abcabcbb"',
         output: "3",
-        explanation: '"abc" is the longest substring without repeated characters.',
+        explanation: '"abc"는 같은 문자가 반복되지 않는 가장 긴 부분 문자열입니다.',
       },
       {
         input: 's = "bbbbb"',
         output: "1",
-        explanation: 'Every character is "b", so a single character is the longest.',
+        explanation: '모든 문자가 "b"이므로 길이가 1인 부분 문자열이 가장 깁니다.',
       },
     ],
     constraints: [
       "0 <= len(s) <= 100,000",
-      "s may contain letters, digits, symbols, and spaces.",
+      "s에는 문자, 숫자, 기호, 공백이 포함될 수 있습니다.",
     ],
     starterCode:
-      "def longest_unique_substring(s):\n    # Return the length of the longest unique-character substring.\n    pass\n",
+      "def longest_unique_substring(s):\n    # 중복 문자가 없는 가장 긴 부분 문자열의 길이를 반환하세요.\n    pass\n",
     functionName: "longest_unique_substring",
   },
 ];

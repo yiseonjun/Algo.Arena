@@ -37,12 +37,12 @@ router.get("/challenges", (_req, res): void => {
 router.get("/challenges/:challengeId", (req, res): void => {
   const params = GetChallengeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json({ error: "문제 정보가 올바르지 않습니다." });
     return;
   }
   const challenge = findChallenge(params.data.challengeId);
   if (!challenge) {
-    res.status(404).json({ error: "Challenge not found." });
+    res.status(404).json({ error: "문제를 찾을 수 없습니다." });
     return;
   }
   res.json(GetChallengeResponse.parse(challenge));
@@ -51,18 +51,18 @@ router.get("/challenges/:challengeId", (req, res): void => {
 router.post("/battles", (req, res): void => {
   const parsed = CreateBattleBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: "대결방 생성 정보가 올바르지 않습니다." });
     return;
   }
   if (!parsed.data.playerName.trim()) {
     res.status(400).json({
-      error: "Player name cannot be blank.",
+      error: "플레이어 이름을 입력해 주세요.",
     });
     return;
   }
   const session = createBattle(parsed.data.challengeId, parsed.data.playerName);
   if (!session) {
-    res.status(404).json({ error: "Challenge not found." });
+    res.status(404).json({ error: "문제를 찾을 수 없습니다." });
     return;
   }
   res.status(201).json(CreateBattleResponse.parse(session));
@@ -72,22 +72,22 @@ router.post("/battles/:roomId/join", (req, res): void => {
   const params = JoinBattleParams.safeParse(req.params);
   const parsed = JoinBattleBody.safeParse(req.body);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json({ error: "방 코드가 올바르지 않습니다." });
     return;
   }
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: "참가 정보가 올바르지 않습니다." });
     return;
   }
   if (!parsed.data.playerName.trim()) {
     res.status(400).json({
-      error: "Player name cannot be blank.",
+      error: "플레이어 이름을 입력해 주세요.",
     });
     return;
   }
   const session = joinBattle(params.data.roomId, parsed.data.playerName);
   if (!session) {
-    res.status(409).json({ error: "This room is full or no longer joinable." });
+    res.status(409).json({ error: "방이 가득 찼거나 더 이상 참가할 수 없습니다." });
     return;
   }
   broadcastBattleEvent(params.data.roomId, {
@@ -101,12 +101,12 @@ router.post("/battles/:roomId/join", (req, res): void => {
 router.get("/battles/:roomId/players/:playerId", (req, res): void => {
   const params = GetBattleParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json({ error: "대결 또는 참가자 정보가 올바르지 않습니다." });
     return;
   }
   const session = getBattleSession(params.data.roomId, params.data.playerId);
   if (!session) {
-    res.status(404).json({ error: "Battle or player not found." });
+    res.status(404).json({ error: "대결방 또는 참가자를 찾을 수 없습니다." });
     return;
   }
   res.json(GetBattleResponse.parse(session));
@@ -116,11 +116,11 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
   const params = SubmitCodeParams.safeParse(req.params);
   const parsed = SubmitCodeBody.safeParse(req.body);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json({ error: "대결방 정보가 올바르지 않습니다." });
     return;
   }
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: "코드 제출 정보가 올바르지 않습니다." });
     return;
   }
 
@@ -128,26 +128,26 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
   const { playerId, code, mode } = parsed.data;
   const battle = getBattle(roomId);
   if (!battle) {
-    res.status(404).json({ error: "Battle not found." });
+    res.status(404).json({ error: "대결방을 찾을 수 없습니다." });
     return;
   }
   if (!getPlayer(roomId, playerId)) {
-    res.status(404).json({ error: "Player not found in this battle." });
+    res.status(404).json({ error: "이 대결방에서 참가자를 찾을 수 없습니다." });
     return;
   }
   if (battle.status !== "ACTIVE") {
-    res.status(409).json({ error: "The battle is not active." });
+    res.status(409).json({ error: "현재 진행 중인 대결이 아닙니다." });
     return;
   }
   if (!claimSubmission(roomId, playerId)) {
-    res.status(409).json({ error: "A submission is already being judged." });
+    res.status(409).json({ error: "이전 코드를 채점하고 있습니다. 잠시 기다려 주세요." });
     return;
   }
 
   try {
     const challenge = findChallenge(battle.challengeId);
     if (!challenge) {
-      res.status(404).json({ error: "Challenge not found." });
+      res.status(404).json({ error: "문제를 찾을 수 없습니다." });
       return;
     }
 
@@ -165,7 +165,7 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
       mode,
     });
     if (!applied) {
-      res.status(409).json({ error: "The battle ended while the code was being judged." });
+      res.status(409).json({ error: "채점 중 대결이 종료되었습니다." });
       return;
     }
 
