@@ -34,8 +34,8 @@ const challengeData: Challenge[] = [
       "인덱스는 어떤 순서로 반환해도 됩니다.",
     ],
     starterCode:
-      "def two_sum(nums, target):\n    # 합이 목표값과 같은 두 수의 인덱스를 반환하세요.\n    pass\n",
-    functionName: "two_sum",
+      "def solution(nums, target):\n    # 합이 목표값과 같은 두 수의 인덱스를 반환하세요.\n    pass\n",
+    functionName: "solution",
   },
   {
     id: "valid-parentheses",
@@ -64,8 +64,8 @@ const challengeData: Challenge[] = [
       "s에는 괄호 문자만 들어 있습니다.",
     ],
     starterCode:
-      "def is_valid_parentheses(s):\n    # 괄호가 모두 올바르게 짝을 이루는지 반환하세요.\n    pass\n",
-    functionName: "is_valid_parentheses",
+      "def solution(s):\n    # 괄호가 모두 올바르게 짝을 이루는지 반환하세요.\n    pass\n",
+    functionName: "solution",
   },
   {
     id: "longest-substring",
@@ -94,8 +94,8 @@ const challengeData: Challenge[] = [
       "s에는 문자, 숫자, 기호, 공백이 포함될 수 있습니다.",
     ],
     starterCode:
-      "def longest_unique_substring(s):\n    # 중복 문자가 없는 가장 긴 부분 문자열의 길이를 반환하세요.\n    pass\n",
-    functionName: "longest_unique_substring",
+      "def solution(s):\n    # 중복 문자가 없는 가장 긴 부분 문자열의 길이를 반환하세요.\n    pass\n",
+    functionName: "solution",
   },
 ];
 
