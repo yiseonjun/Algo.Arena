@@ -9,6 +9,7 @@ import type { SubmissionInputMode } from './submissionInputMode';
 
 export interface SubmissionInput {
   playerId: string;
+  challengeId: string;
   /** @maxLength 12000 */
   code: string;
   mode: SubmissionInputMode;

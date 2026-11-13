@@ -11,7 +11,11 @@ import type { BattleStatus } from './battleStatus';
 
 export interface Battle {
   roomId: string;
-  challengeId: string;
+  /**
+     * @minItems 3
+     * @maxItems 3
+     */
+  challengeIds: string[];
   status: BattleStatus;
   players: BattlePlayer[];
   secondsRemaining: number;

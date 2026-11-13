@@ -39,8 +39,9 @@ Real-time 1v1 Python algorithm battles: two players solve the same challenge, ea
 ## Product
 
 - User-facing product copy, challenge descriptions, and UI errors are in Korean. Every challenge entry point uses `def solution(...)`; keep API routes and protocol enums unchanged in English.
-- Select one of three seeded algorithm challenges, create a room, and invite a rival with its code.
-- Run public tests, submit against hidden tests, and receive real-time verdict, score, heart, timer, and attack updates.
+- Choose Bronze, Silver, or Gold; each tier has five challenges, and each match randomly selects three.
+- Both players progress through the same three challenges independently; accepted submissions award points and damage, with the timer and hearts deciding the match.
+- Create a room and invite a rival with its code; run public tests and submit against hidden tests for real-time verdict and attack updates.
 - Matches support two browser sessions connected to the same API process.
 
 ## User preferences

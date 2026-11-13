@@ -1,20 +1,21 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import type {
   Battle,
   BattleLogEntry,
   BattlePlayer,
   BattleSession,
+  Challenge,
 } from "@workspace/api-zod";
-import { findChallenge } from "./problems";
+import { findChallenge, listChallengesByDifficulty } from "./problems";
 
 const MATCH_DURATION_SECONDS = 5 * 60;
+const CHALLENGES_PER_MATCH = 3;
 const rooms = new Map<string, BattleRoom>();
 
 interface BattleRoom {
   battle: Battle;
   createdAt: number;
   endsAt: number | null;
-  solvedBy: Set<string>;
   pendingPlayers: Set<string>;
 }
 
@@ -67,11 +68,38 @@ function decideWinner(room: BattleRoom): string | null {
   return null;
 }
 
+function chooseChallenges(
+  difficulty: Challenge["difficulty"],
+): Challenge[] {
+  const candidates = listChallengesByDifficulty(difficulty);
+  for (let index = candidates.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(index + 1);
+    [candidates[index], candidates[swapIndex]] = [
+      candidates[swapIndex]!,
+      candidates[index]!,
+    ];
+  }
+  return candidates.slice(0, CHALLENGES_PER_MATCH);
+}
+
+function getPlayerChallenge(room: BattleRoom, playerId: string): Challenge | null {
+  const player = room.battle.players.find((entry) => entry.id === playerId);
+  if (!player || room.battle.challengeIds.length === 0) return null;
+  const index = Math.min(
+    player.currentChallengeIndex,
+    room.battle.challengeIds.length - 1,
+  );
+  return findChallenge(room.battle.challengeIds[index] ?? "") ?? null;
+}
+
 export function createBattle(
-  challengeId: string,
+  difficulty: Challenge["difficulty"],
   playerName: string,
 ): BattleSession | null {
-  const challenge = findChallenge(challengeId);
+  const selectedChallenges = chooseChallenges(difficulty);
+  if (selectedChallenges.length !== CHALLENGES_PER_MATCH) return null;
+  const challengeIds = selectedChallenges.map((challenge) => challenge.id);
+  const challenge = findChallenge(challengeIds[0] ?? "");
   if (!challenge) return null;
   const roomId = newRoomCode();
   const player: BattlePlayer = {
@@ -80,11 +108,12 @@ export function createBattle(
     hearts: 3,
     points: 0,
     submissions: 0,
+    currentChallengeIndex: 0,
     connected: false,
   };
   const battle: Battle = {
     roomId,
-    challengeId,
+    challengeIds,
     status: "WAITING",
     players: [player],
     secondsRemaining: MATCH_DURATION_SECONDS,
@@ -96,7 +125,6 @@ export function createBattle(
     battle,
     createdAt: Date.now(),
     endsAt: null,
-    solvedBy: new Set(),
     pendingPlayers: new Set(),
   });
   return { playerId: player.id, battle: structuredClone(battle), challenge };
@@ -110,7 +138,7 @@ export function joinBattle(
   if (!room || room.battle.status !== "WAITING" || room.battle.players.length >= 2) {
     return null;
   }
-  const challenge = findChallenge(room.battle.challengeId);
+  const challenge = findChallenge(room.battle.challengeIds[0] ?? "");
   if (!challenge) return null;
   const player: BattlePlayer = {
     id: randomUUID(),
@@ -118,6 +146,7 @@ export function joinBattle(
     hearts: 3,
     points: 0,
     submissions: 0,
+    currentChallengeIndex: 0,
     connected: false,
   };
   room.battle.players.push(player);
@@ -135,9 +164,9 @@ export function getBattleSession(
   if (!room || !room.battle.players.some((player) => player.id === playerId)) {
     return null;
   }
-  const challenge = findChallenge(room.battle.challengeId);
-  if (!challenge) return null;
   refreshTimer(room);
+  const challenge = getPlayerChallenge(room, playerId);
+  if (!challenge) return null;
   return {
     playerId,
     battle: structuredClone(room.battle),
@@ -199,6 +228,7 @@ export interface AppliedSubmission {
 export function applySubmission(input: {
   roomId: string;
   playerId: string;
+  challengeId: string;
   verdict: BattleLogEntry["verdict"];
   mode: BattleLogEntry["mode"];
 }): AppliedSubmission | null {
@@ -208,6 +238,14 @@ export function applySubmission(input: {
   if (room.battle.status !== "ACTIVE") return null;
   const player = room.battle.players.find((entry) => entry.id === input.playerId);
   if (!player) return null;
+  const expectedChallengeId =
+    room.battle.challengeIds[player.currentChallengeIndex];
+  if (
+    player.currentChallengeIndex >= room.battle.challengeIds.length ||
+    expectedChallengeId !== input.challengeId
+  ) {
+    return null;
+  }
 
   player.submissions += 1;
   let pointsAwarded = 0;
@@ -215,25 +253,28 @@ export function applySubmission(input: {
   let gameOver = false;
   const opponent = room.battle.players.find((entry) => entry.id !== input.playerId);
 
-  if (
-    input.mode === "SUBMIT" &&
-    input.verdict === "AC" &&
-    opponent &&
-    !room.solvedBy.has(input.playerId)
-  ) {
-    room.solvedBy.add(input.playerId);
-    pointsAwarded = findChallenge(room.battle.challengeId)?.points ?? 0;
+  if (input.mode === "SUBMIT" && input.verdict === "AC" && opponent) {
+    pointsAwarded = findChallenge(input.challengeId)?.points ?? 0;
     player.points += pointsAwarded;
     opponent.hearts = Math.max(0, opponent.hearts - 1);
     damageDealt = 1;
+    player.currentChallengeIndex += 1;
     if (opponent.hearts === 0) {
       finishRoom(room, player.id);
+      gameOver = true;
+    } else if (
+      room.battle.players.every(
+        (entry) => entry.currentChallengeIndex >= room.battle.challengeIds.length,
+      )
+    ) {
+      finishRoom(room, decideWinner(room));
       gameOver = true;
     }
   }
 
   const logEntry: BattleLogEntry = {
     id: randomUUID(),
+    challengeId: input.challengeId,
     playerId: input.playerId,
     playerName: player.name,
     mode: input.mode,

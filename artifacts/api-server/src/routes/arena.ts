@@ -60,9 +60,9 @@ router.post("/battles", (req, res): void => {
     });
     return;
   }
-  const session = createBattle(parsed.data.challengeId, parsed.data.playerName);
+  const session = createBattle(parsed.data.difficulty, parsed.data.playerName);
   if (!session) {
-    res.status(404).json({ error: "문제를 찾을 수 없습니다." });
+    res.status(404).json({ error: "선택한 단계에서 대결을 만들 수 없습니다." });
     return;
   }
   res.status(201).json(CreateBattleResponse.parse(session));
@@ -125,14 +125,23 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
   }
 
   const { roomId } = params.data;
-  const { playerId, code, mode } = parsed.data;
+  const { playerId, challengeId, code, mode } = parsed.data;
   const battle = getBattle(roomId);
   if (!battle) {
     res.status(404).json({ error: "대결방을 찾을 수 없습니다." });
     return;
   }
-  if (!getPlayer(roomId, playerId)) {
+  const player = getPlayer(roomId, playerId);
+  if (!player) {
     res.status(404).json({ error: "이 대결방에서 참가자를 찾을 수 없습니다." });
+    return;
+  }
+  if (player.currentChallengeIndex >= battle.challengeIds.length) {
+    res.status(409).json({ error: "선택한 단계의 문제를 모두 풀었습니다." });
+    return;
+  }
+  if (battle.challengeIds[player.currentChallengeIndex] !== challengeId) {
+    res.status(409).json({ error: "현재 풀어야 하는 문제와 제출한 문제가 다릅니다." });
     return;
   }
   if (battle.status !== "ACTIVE") {
@@ -145,7 +154,7 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
   }
 
   try {
-    const challenge = findChallenge(battle.challengeId);
+    const challenge = findChallenge(challengeId);
     if (!challenge) {
       res.status(404).json({ error: "문제를 찾을 수 없습니다." });
       return;
@@ -154,6 +163,7 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
     broadcastBattleEvent(roomId, {
       type: "CODE_SUBMITTED",
       playerId,
+      challengeId,
       mode,
     });
 
@@ -161,6 +171,7 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
     const applied = applySubmission({
       roomId,
       playerId,
+      challengeId,
       verdict: judged.verdict,
       mode,
     });
@@ -178,6 +189,7 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
     broadcastBattleEvent(roomId, {
       type: "SUBMISSION_RESULT",
       playerId,
+      challengeId,
       mode,
       result,
       battle: applied.battle,
@@ -187,6 +199,7 @@ router.post("/battles/:roomId/submissions", async (req, res): Promise<void> => {
         type: "ATTACK_EVENT",
         attackerId: playerId,
         defenderId: applied.battle.players.find((player) => player.id !== playerId)?.id,
+        challengeId,
         damageDealt: applied.damageDealt,
         pointsAwarded: applied.pointsAwarded,
         battle: applied.battle,

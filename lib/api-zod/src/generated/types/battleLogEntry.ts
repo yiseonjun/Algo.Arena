@@ -10,6 +10,7 @@ import type { BattleLogEntryVerdict } from './battleLogEntryVerdict';
 
 export interface BattleLogEntry {
   id: string;
+  challengeId: string;
   playerId: string;
   playerName: string;
   mode: BattleLogEntryMode;

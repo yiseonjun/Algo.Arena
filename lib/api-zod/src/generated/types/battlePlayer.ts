@@ -12,5 +12,6 @@ export interface BattlePlayer {
   hearts: number;
   points: number;
   submissions: number;
+  currentChallengeIndex: number;
   connected: boolean;
 }

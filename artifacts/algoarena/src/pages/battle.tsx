@@ -58,9 +58,15 @@ export default function BattlePage() {
   const battleQuery = useGetBattle(roomId, playerId, { query: { enabled: !!roomId && !!playerId, queryKey: getGetBattleQueryKey(roomId, playerId), refetchInterval: 15000 } });
   const [liveBattle, setLiveBattle] = useState<Battle | null>(null);
   const battle = liveBattle ?? battleQuery.data?.battle;
-  const challengeId = battle?.challengeId ?? '';
+  const me = battle?.players.find((player) => player.id === playerId);
+  const rival = battle?.players.find((player) => player.id !== playerId);
+  const challengeIds = battle?.challengeIds ?? [];
+  const problemCount = challengeIds.length;
+  const problemIndex = me?.currentChallengeIndex ?? 0;
+  const allProblemsSolved = problemCount > 0 && problemIndex >= problemCount;
+  const challengeId = challengeIds[Math.min(problemIndex, problemCount - 1)] ?? '';
   const challengeQuery = useGetChallenge(challengeId, { query: { enabled: !!challengeId, queryKey: getGetChallengeQueryKey(challengeId) } });
-  const challenge = challengeQuery.data ?? battleQuery.data?.challenge;
+  const challenge = challengeQuery.data;
   const [code, setCode] = useState('');
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [split, setSplit] = useState(43);
@@ -79,16 +85,16 @@ export default function BattlePage() {
 
   useEffect(() => {
     if (challenge?.starterCode && roomId && playerId) {
-      const saved = localStorage.getItem(`algoarena-code:${roomId}:${playerId}`);
+      const saved = localStorage.getItem(`algoarena-code:${roomId}:${playerId}:${challenge.id}`);
       setCode(saved ?? challenge.starterCode);
     }
   }, [challenge?.id, roomId, playerId]);
 
   useEffect(() => {
-    if (code && roomId && playerId) {
-      localStorage.setItem(`algoarena-code:${roomId}:${playerId}`, code);
+    if (code && challenge?.id && roomId && playerId) {
+      localStorage.setItem(`algoarena-code:${roomId}:${playerId}:${challenge.id}`, code);
     }
-  }, [code, roomId, playerId]);
+  }, [code, challenge?.id, roomId, playerId]);
 
   useEffect(() => {
     if (!roomId || !playerId || typeof window === 'undefined') return;
@@ -169,16 +175,14 @@ export default function BattlePage() {
     return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
   }, []);
 
-  const me = battle?.players.find((player) => player.id === playerId);
-  const rival = battle?.players.find((player) => player.id !== playerId);
   const finished = battle?.status === 'FINISHED';
   const secondsRemaining = battle?.secondsRemaining ?? 0;
   const winner = battle?.players.find((player) => player.id === battle.winnerPlayerId);
   const sendCode = (mode: 'RUN' | 'SUBMIT') => {
-    if (!playerId || !roomId || submitCode.isPending) return;
+    if (!playerId || !roomId || !challengeId || allProblemsSolved || submitCode.isPending) return;
     setResult(null);
     setRequestError('');
-    submitCode.mutate({ roomId, data: { playerId, code, mode } }, {
+    submitCode.mutate({ roomId, data: { playerId, challengeId, code, mode } }, {
       onSuccess: (response) => {
         setResult(response);
         setLiveBattle(response.battle);
@@ -222,7 +226,7 @@ export default function BattlePage() {
 
       <DuelStatus players={battle?.players ?? []} playerId={playerId} />
       <section className="battle-layout grid h-[calc(100dvh-132px)] min-h-[570px] grid-cols-1 md:overflow-hidden" style={{ gridTemplateColumns: `minmax(310px, ${split}fr) 10px minmax(360px, ${100 - split}fr)` }}>
-        <ProblemPanel challenge={challenge} submissions={battle?.submissions ?? []} pendingSubmission={pendingRivalSubmission} loading={challengeQuery.isLoading && !challenge} />
+        <ProblemPanel challenge={challenge} challengeIds={challengeIds} problemIndex={problemIndex} problemCount={problemCount} allProblemsSolved={allProblemsSolved} submissions={battle?.submissions ?? []} pendingSubmission={pendingRivalSubmission} loading={challengeQuery.isLoading && !challenge} />
         <div role="separator" aria-label="문제와 편집기 영역 크기 조절" aria-orientation="vertical" onPointerDown={(event) => { event.preventDefault(); dragRef.current = true; }} className="group relative hidden cursor-col-resize items-center justify-center bg-[#0b0e17] md:flex"><span className="h-14 w-[3px] rounded-full bg-slate-700 transition group-hover:bg-blue-400 group-active:bg-blue-300" /></div>
         <div className="flex min-h-[650px] flex-col border-l border-white/[.07] bg-[#0e121c]">
           <div className="relative flex items-center justify-between border-b border-white/[.07] px-4 py-3">
@@ -237,8 +241,8 @@ export default function BattlePage() {
           <div className="flex items-center justify-between border-t border-white/[.07] px-4 py-3">
             <div className="mono flex items-center gap-2 text-[9px] text-slate-600"><span className="text-slate-500">PYTHON 3</span><span>·</span><span>실행 준비 완료</span></div>
             <div className="flex gap-2">
-              <button data-testid="button-run-code" disabled={submitCode.isPending || battle?.status !== 'ACTIVE'} onClick={() => sendCode('RUN')} className="flex h-9 items-center gap-2 rounded-lg border border-white/[.11] px-3 text-xs font-semibold text-slate-300 transition hover:bg-white/[.05] disabled:opacity-40"><Zap size={13} />실행</button>
-              <button data-testid="button-submit-code" disabled={submitCode.isPending || battle?.status !== 'ACTIVE'} onClick={() => sendCode('SUBMIT')} className="flex h-9 items-center gap-2 rounded-lg bg-blue-500 px-4 text-xs font-bold text-white transition hover:bg-blue-400 disabled:opacity-40">{submitCode.isPending ? <LoaderCircle size={14} className="animate-spin" /> : <Send size={13} />}{battle?.status === 'WAITING' ? '상대 참가 대기 중' : finished ? '대결 종료' : '제출'}</button>
+              <button data-testid="button-run-code" disabled={submitCode.isPending || battle?.status !== 'ACTIVE' || allProblemsSolved} onClick={() => sendCode('RUN')} className="flex h-9 items-center gap-2 rounded-lg border border-white/[.11] px-3 text-xs font-semibold text-slate-300 transition hover:bg-white/[.05] disabled:opacity-40"><Zap size={13} />실행</button>
+              <button data-testid="button-submit-code" disabled={submitCode.isPending || battle?.status !== 'ACTIVE' || allProblemsSolved} onClick={() => sendCode('SUBMIT')} className="flex h-9 items-center gap-2 rounded-lg bg-blue-500 px-4 text-xs font-bold text-white transition hover:bg-blue-400 disabled:opacity-40">{submitCode.isPending ? <LoaderCircle size={14} className="animate-spin" /> : <Send size={13} />}{battle?.status === 'WAITING' ? '상대 참가 대기 중' : finished ? '대결 종료' : allProblemsSolved ? '3문제 완료' : '제출'}</button>
             </div>
           </div>
         </div>
@@ -254,15 +258,20 @@ export default function BattlePage() {
   );
 }
 
-function ProblemPanel({ challenge, submissions, pendingSubmission, loading }: { challenge?: BattleSession['challenge']; submissions: Battle['submissions']; pendingSubmission: { playerId: string; mode?: string } | null; loading: boolean }) {
+function ProblemPanel({ challenge, challengeIds, problemIndex, problemCount, allProblemsSolved, submissions, pendingSubmission, loading }: { challenge?: BattleSession['challenge']; challengeIds: string[]; problemIndex: number; problemCount: number; allProblemsSolved: boolean; submissions: Battle['submissions']; pendingSubmission: { playerId: string; mode?: string } | null; loading: boolean }) {
   const [tab, setTab] = useState<'problem' | 'examples' | 'submissions'>('problem');
   return <aside className="flex min-h-[360px] flex-col overflow-y-auto border-r border-white/[.07] bg-[#101520] pb-16 md:pb-5">
     <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-purple-400" /><span className="mono text-[9px] tracking-[.08em] text-slate-400">문제 안내</span></div><div className="mono text-[9px] text-slate-600">대결 규칙 / 01</div></div>
+    <div className="flex items-center gap-2 px-5 pt-4" aria-label="문제 진행 상황">
+      <div className="flex flex-1 gap-1">{challengeIds.map((id, index) => <span key={id} className={`h-1 flex-1 rounded-full ${index < problemIndex || allProblemsSolved ? 'bg-blue-400' : index === problemIndex ? 'bg-blue-300/80' : 'bg-white/10'}`} />)}</div>
+      <span className="mono shrink-0 text-[9px] tracking-[.04em] text-slate-400">{allProblemsSolved ? `${problemCount} / ${problemCount} 완료` : `문제 ${Math.min(problemIndex + 1, problemCount)} / ${problemCount}`}</span>
+    </div>
     {loading ? <div className="space-y-4 p-6"><div className="h-5 w-2/3 animate-pulse rounded bg-white/[.06]" /><div className="h-20 animate-pulse rounded bg-white/[.04]" /><div className="h-32 animate-pulse rounded bg-white/[.04]" /></div> : !challenge ? <div className="p-6 text-sm text-slate-500">문제 정보를 불러올 수 없습니다.</div> :
       <div className="p-5 md:p-6">
         <div className="mono text-[9px] tracking-[.05em] text-blue-300">알고리즘 · Python</div>
         <h1 data-testid="text-challenge-title" className="mt-2 text-[26px] font-semibold leading-tight tracking-[-.04em] text-slate-100">{challenge.title}</h1>
         <p className="mt-3 text-[13px] leading-6 text-slate-400">{challenge.summary}</p>
+        {allProblemsSolved && <div className="mt-4 rounded-lg border border-emerald-400/20 bg-emerald-500/[.06] px-3 py-2 text-[11px] leading-5 text-emerald-200">선택한 세 문제를 모두 풀었습니다. 상대의 결과를 기다리고 있습니다.</div>}
         <div className="mt-5 grid grid-cols-2 gap-2"><div className="rounded-lg border border-white/[.07] bg-white/[.02] p-3"><div className="mono text-[8px] tracking-[.04em] text-slate-600">난이도</div><div className="mt-1 text-xs font-semibold text-slate-200">{getDifficultyLabel(challenge.difficulty)}</div></div><div className="rounded-lg border border-white/[.07] bg-white/[.02] p-3"><div className="mono text-[8px] tracking-[.04em] text-slate-600">획득 점수</div><div className="mt-1 text-xs font-semibold text-blue-300">{challenge.points}점</div></div></div>
          <div className="mt-6 flex border-b border-white/[.08]"><button data-testid="tab-problem" onClick={() => setTab('problem')} className={`mono border-b-2 px-3 pb-2 text-[9px] tracking-[.04em] ${tab === 'problem' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>문제</button><button data-testid="tab-examples" onClick={() => setTab('examples')} className={`mono border-b-2 px-3 pb-2 text-[9px] tracking-[.04em] ${tab === 'examples' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>예시</button><button data-testid="tab-submissions" onClick={() => setTab('submissions')} className={`mono border-b-2 px-3 pb-2 text-[9px] tracking-[.04em] ${tab === 'submissions' ? 'border-blue-400 text-blue-300' : 'border-transparent text-slate-600'}`}>제출 기록 <span className="ml-1 text-slate-500">{submissions.length}</span></button></div>
          {tab === 'problem' ? <div className="space-y-5 pt-5">
@@ -273,7 +282,7 @@ function ProblemPanel({ challenge, submissions, pendingSubmission, loading }: { 
           </div> : tab === 'examples' ? <div className="space-y-3 pt-4">{challenge.examples.map((example, index) => <div key={index} className="rounded-lg border border-white/[.07] bg-[#0c111b] p-3.5"><div className="mono mb-3 text-[9px] tracking-[.04em] text-purple-300">예시 {String(index + 1).padStart(2, '0')}</div><div className="grid grid-cols-[48px_1fr] gap-y-2 text-[10px]"><span className="mono text-slate-600">입력</span><code className="mono whitespace-pre-wrap text-slate-300">{example.input}</code><span className="mono text-slate-600">출력</span><code className="mono whitespace-pre-wrap text-emerald-300">{example.output}</code></div>{example.explanation && <p className="mt-3 border-t border-white/[.06] pt-2 text-[10px] leading-5 text-slate-500">{example.explanation}</p>}</div>)}</div> : <div className="space-y-2 pt-4">
             {pendingSubmission && <div data-testid="status-opponent-submitting" className="flex items-center gap-2 rounded-lg border border-blue-400/20 bg-blue-500/[.06] px-3 py-2.5 text-[10px] text-blue-200"><LoaderCircle size={12} className="animate-spin" />상대가 코드를 제출했습니다 · {getModeLabel(pendingSubmission.mode)} 검토 중</div>}
             {submissions.length === 0 && !pendingSubmission ? <div className="rounded-lg border border-dashed border-white/[.08] px-4 py-6 text-center text-[10px] text-slate-600">아직 제출한 코드가 없습니다. 먼저 도전해 보세요.</div> : submissions.map((entry) => <div key={entry.id} data-testid={`row-submission-${entry.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-white/[.06] bg-[#0c111b] px-3 py-2.5">
-              <div className="min-w-0"><div className="truncate text-[11px] font-medium text-slate-300">{entry.playerName}</div><div className="mono mt-1 text-[8px] tracking-[.04em] text-slate-600">{getModeLabel(entry.mode)} · {new Date(String(entry.createdAt)).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div></div>
+              <div className="min-w-0"><div className="truncate text-[11px] font-medium text-slate-300">{entry.playerName}</div><div className="mono mt-1 text-[8px] tracking-[.04em] text-slate-600">문제 {Math.max(1, challengeIds.indexOf(entry.challengeId) + 1)} · {getModeLabel(entry.mode)} · {new Date(String(entry.createdAt)).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div></div>
               <span className={`mono shrink-0 rounded border px-2 py-1 text-[8px] tracking-[.04em] ${entry.verdict === 'AC' ? 'border-emerald-400/20 bg-emerald-500/[.06] text-emerald-300' : 'border-red-400/20 bg-red-500/[.06] text-red-300'}`}>{getVerdictLabel(entry.verdict)}</span>
            </div>)}
          </div>}
@@ -300,7 +309,7 @@ function DuelContender({ player, side, label }: { player?: Battle['players'][num
   const alignment = side === 'left' ? 'items-start text-left' : 'items-end text-right';
   return <div className={`flex min-w-[112px] flex-col ${alignment}`}>
     <div className="flex items-center gap-1.5"><span className={`h-1.5 w-1.5 rounded-full ${player?.connected ? 'bg-emerald-400' : player ? 'bg-amber-400' : 'bg-slate-700'}`} /><span className="mono max-w-[130px] truncate text-[9px] tracking-[.04em] text-slate-500">{label} / {player?.name ?? '상대 대기 중'}</span></div>
-    <div className="mt-1 flex items-center gap-2"><div className="flex gap-[3px]">{Array.from({ length: 3 }, (_, index) => <Heart key={index} size={11} className={index < (player?.hearts ?? 0) ? 'fill-red-400 text-red-400' : 'text-slate-700'} />)}</div><span className={`mono text-[9px] ${tone}`}>{player?.points ?? 0}점</span></div>
+    <div className="mt-1 flex items-center gap-2"><div className="flex gap-[3px]">{Array.from({ length: 3 }, (_, index) => <Heart key={index} size={11} className={index < (player?.hearts ?? 0) ? 'fill-red-400 text-red-400' : 'text-slate-700'} />)}</div><span className={`mono text-[9px] ${tone}`}>{player?.points ?? 0}점</span><span className="mono text-[8px] text-slate-600">{Math.min(player?.currentChallengeIndex ?? 0, 3)}/3</span></div>
   </div>;
 }
 
@@ -363,7 +372,7 @@ function ResultPanel({ result, pending, error, verdictLabel }: { result: Submiss
 
 function PlayerStrip({ player, label, tone }: { player?: Battle['players'][number]; label: string; tone: 'blue' | 'purple' }) {
   const color = tone === 'blue' ? 'text-blue-300' : 'text-purple-300';
-  return <div className="min-w-0"><div className="mono truncate text-[8px] tracking-[.04em] text-slate-600">{label} · {player?.name ?? '대기 중'}</div><div className="mt-1 flex items-center gap-2"><span className={`mono text-[10px] ${color}`}>{player?.points ?? 0}점</span><div className="flex gap-0.5">{Array.from({ length: 3 }, (_, index) => <Heart key={index} size={10} className={index < (player?.hearts ?? 0) ? 'fill-red-400 text-red-400' : 'text-slate-700'} />)}</div></div></div>;
+  return <div className="min-w-0"><div className="mono truncate text-[8px] tracking-[.04em] text-slate-600">{label} · {player?.name ?? '대기 중'}</div><div className="mt-1 flex items-center gap-2"><span className={`mono text-[10px] ${color}`}>{player?.points ?? 0}점</span><div className="flex gap-0.5">{Array.from({ length: 3 }, (_, index) => <Heart key={index} size={10} className={index < (player?.hearts ?? 0) ? 'fill-red-400 text-red-400' : 'text-slate-700'} />)}</div><span className="mono text-[8px] text-slate-600">{Math.min(player?.currentChallengeIndex ?? 0, 3)}/3</span></div></div>;
 }
 
 function ResultOverlay({ winner, me, elapsedSeconds, onLobby, onReplay }: { winner?: Battle['players'][number]; me?: Battle['players'][number]; elapsedSeconds: number; onLobby: () => void; onReplay: () => void }) {

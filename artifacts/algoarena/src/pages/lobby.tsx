@@ -10,9 +10,19 @@ const difficultyStyle: Record<string, string> = {
   GOLD: 'text-[#f2cb69] border-[#f2cb69]/25 bg-[#f2cb69]/[.08]',
 };
 
+const difficultyLevels: Array<{
+  difficulty: Challenge['difficulty'];
+  tier: string;
+  description: string;
+}> = [
+  { difficulty: 'BRONZE', tier: '초급자', description: '기본 공격과 간단한 리스트 문제' },
+  { difficulty: 'SILVER', tier: '중급자', description: '정렬, 집계, 순차 처리 문제' },
+  { difficulty: 'GOLD', tier: '상급자', description: '조건 분석과 시뮬레이션 문제' },
+];
+
 export default function Lobby() {
   const [, setLocation] = useLocation();
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Challenge['difficulty']>('BRONZE');
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [formError, setFormError] = useState('');
@@ -20,7 +30,8 @@ export default function Lobby() {
   const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 30000 } });
   const createBattle = useCreateBattle();
   const joinBattle = useJoinBattle();
-  const selected = challenges?.find((challenge) => challenge.id === selectedId) ?? challenges?.[0];
+  const selectedLevel = difficultyLevels.find((level) => level.difficulty === selectedDifficulty);
+  const selectedCount = challenges?.filter((challenge) => challenge.difficulty === selectedDifficulty).length ?? 0;
 
   const enterMatch = (session: { playerId: string; battle: { roomId: string } }) => {
     sessionStorage.setItem('algoarena-player-id', session.playerId);
@@ -30,9 +41,9 @@ export default function Lobby() {
   const createRoom = () => {
     const name = playerName.trim();
     if (!name) return setFormError('아레나에 입장하려면 플레이어 이름을 입력해 주세요.');
-    if (!selected) return setFormError('대결방을 만들기 전에 문제를 선택해 주세요.');
+    if (!selectedLevel || selectedCount < 3) return setFormError('문제가 3개 이상 등록된 단계를 선택해 주세요.');
     setFormError('');
-    createBattle.mutate({ data: { challengeId: selected.id, playerName: name } }, {
+    createBattle.mutate({ data: { difficulty: selectedDifficulty, playerName: name } }, {
       onSuccess: enterMatch,
       onError: () => setFormError('대결방을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.'),
     });
@@ -109,19 +120,19 @@ export default function Lobby() {
 
         <section className="entrance-delay border-t border-white/[.08] pt-7">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-            <div><div className="mono flex items-center gap-2 text-[9px] tracking-[.12em] text-purple-300"><span className="h-px w-5 bg-purple-400" />대결 대기열</div><h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-100">문제 선택</h2><p className="mt-1 text-xs text-slate-500">문제를 선택해 대결방을 만드세요. 상대에게도 같은 문제가 주어집니다.</p></div>
-            {selected && <div className="mono rounded-md border border-white/[.08] bg-white/[.025] px-3 py-2 text-[10px] text-slate-400">선택한 문제 <span className="ml-2 text-slate-200">{selected.points}점</span></div>}
+            <div><div className="mono flex items-center gap-2 text-[9px] tracking-[.12em] text-purple-300"><span className="h-px w-5 bg-purple-400" />대결 대기열</div><h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-100">배틀 단계 선택</h2><p className="mt-1 text-xs text-slate-500">브론즈·실버·골드 중 하나를 고르면, 해당 단계의 5문제 중 3문제를 무작위로 뽑습니다.</p></div>
+            {selectedLevel && <div className="mono rounded-md border border-white/[.08] bg-white/[.025] px-3 py-2 text-[10px] text-slate-400">선택한 단계 <span className="ml-2 text-slate-200">{selectedDifficulty} · 3문제</span></div>}
           </div>
           {isLoading ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{[0,1,2].map((item) => <div key={item} className="h-[154px] animate-pulse rounded-xl border border-white/[.06] bg-white/[.025]" />)}</div> :
           isError ? <div className="flex flex-col items-start gap-3 rounded-xl border border-red-400/20 bg-red-500/[.04] p-6"><p className="text-sm text-slate-300">문제 목록을 불러오지 못했습니다.</p><button data-testid="button-retry-challenges" onClick={() => refetch()} className="rounded-lg border border-red-300/20 px-3 py-2 text-xs text-red-200 hover:bg-red-400/10">다시 불러오기</button></div> :
           !challenges?.length ? <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-500">아직 등록된 문제가 없습니다.</div> :
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{challenges.map((challenge) => <ChallengeCard key={challenge.id} challenge={challenge} selected={challenge.id === (selected?.id ?? selectedId)} onSelect={() => setSelectedId(challenge.id)} />)}</div>}
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{difficultyLevels.map((level) => <DifficultyCard key={level.difficulty} difficulty={level.difficulty} tier={level.tier} description={level.description} problemCount={challenges?.filter((challenge) => challenge.difficulty === level.difficulty).length ?? 0} selected={level.difficulty === selectedDifficulty} onSelect={() => setSelectedDifficulty(level.difficulty)} />)}</div>}
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button data-testid="button-create-room" onClick={createRoom} disabled={busy || !selected} className="flex h-12 items-center justify-center gap-3 rounded-lg bg-blue-500 px-6 text-sm font-bold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-45">
+            <button data-testid="button-create-room" onClick={createRoom} disabled={busy || selectedCount < 3} className="flex h-12 items-center justify-center gap-3 rounded-lg bg-blue-500 px-6 text-sm font-bold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-45">
               {createBattle.isPending ? <LoaderCircle size={16} className="animate-spin" /> : <Swords size={16} />}
-              {createBattle.isPending ? '대결방 여는 중…' : '대결방 만들기'} <ArrowDownRight size={15} className="opacity-70" />
+              {createBattle.isPending ? '무작위 문제를 고르는 중…' : '무작위 3문제 배틀 시작'} <ArrowDownRight size={15} className="opacity-70" />
             </button>
-            <span className="mono text-[9px] tracking-[.06em] text-slate-600">대결방을 만들면 방 코드가 생성됩니다</span>
+            <span className="mono text-[9px] tracking-[.06em] text-slate-600">방 코드가 생성되면 상대에게 공유하세요</span>
           </div>
         </section>
         <footer className="mono mt-12 flex items-center justify-between border-t border-white/[.07] pt-4 text-[9px] tracking-[.08em] text-slate-600"><span>ALGOARENA / 대전 규칙 01</span><span>압박 속에서도 풀어내세요</span></footer>
@@ -130,12 +141,12 @@ export default function Lobby() {
   );
 }
 
-function ChallengeCard({ challenge, selected, onSelect }: { challenge: Challenge; selected: boolean; onSelect: () => void }) {
-  const difficulty = { BRONZE: '브론즈', SILVER: '실버', GOLD: '골드' }[challenge.difficulty] ?? challenge.difficulty;
-  return <button data-testid={`card-challenge-${challenge.id}`} onClick={onSelect} className={`group relative min-h-[150px] rounded-xl border p-4 text-left transition duration-200 ${selected ? 'border-blue-400/45 bg-blue-500/[.075] shadow-[inset_0_0_0_1px_rgba(59,130,246,.08)]' : 'border-white/[.08] bg-[#101520]/80 hover:border-white/20 hover:bg-[#141a28]'}`}>
-    <div className="flex items-center justify-between"><span className={`mono rounded border px-2 py-1 text-[9px] tracking-[.04em] ${difficultyStyle[challenge.difficulty] ?? 'text-slate-300 border-white/10'}`}>{difficulty}</span><span className="mono text-[10px] text-slate-500">{challenge.points}점</span></div>
-    <h3 className="mt-4 text-base font-semibold text-slate-100">{challenge.title}</h3>
-    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{challenge.summary}</p>
-    <div className="mt-3 flex items-center justify-between"><span className="mono text-[9px] tracking-[.04em] text-slate-600">Python · 대결 문제</span><span className={`h-2 w-2 rounded-full ${selected ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,.8)]' : 'bg-slate-700'}`} /></div>
+function DifficultyCard({ difficulty, tier, description, problemCount, selected, onSelect }: { difficulty: Challenge['difficulty']; tier: string; description: string; problemCount: number; selected: boolean; onSelect: () => void }) {
+  const name = { BRONZE: '브론즈', SILVER: '실버', GOLD: '골드' }[difficulty] ?? difficulty;
+  return <button data-testid={`card-level-${difficulty.toLowerCase()}`} onClick={onSelect} className={`group relative min-h-[150px] rounded-xl border p-4 text-left transition duration-200 ${selected ? 'border-blue-400/45 bg-blue-500/[.075] shadow-[inset_0_0_0_1px_rgba(59,130,246,.08)]' : 'border-white/[.08] bg-[#101520]/80 hover:border-white/20 hover:bg-[#141a28]'}`}>
+    <div className="flex items-center justify-between"><span className={`mono rounded border px-2 py-1 text-[9px] tracking-[.04em] ${difficultyStyle[difficulty] ?? 'text-slate-300 border-white/10'}`}>{name}</span><span className="mono text-[10px] text-slate-500">{problemCount}문제</span></div>
+    <h3 className="mt-4 text-base font-semibold text-slate-100">{name}</h3>
+    <p className="mt-1 text-xs leading-5 text-slate-500">{tier} · {description}</p>
+    <div className="mt-3 flex items-center justify-between"><span className="mono text-[9px] tracking-[.04em] text-slate-600">5문제 중 3개 무작위 선정</span><span className={`h-2 w-2 rounded-full ${selected ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,.8)]' : 'bg-slate-700'}`} /></div>
   </button>;
 }

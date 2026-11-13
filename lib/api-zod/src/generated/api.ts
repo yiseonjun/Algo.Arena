@@ -76,15 +76,20 @@ export const createBattleBodyPlayerNameMax = 24;
 
 
 export const CreateBattleBody = zod.object({
-  "challengeId": zod.string(),
+  "difficulty": zod.enum(['BRONZE', 'SILVER', 'GOLD']),
   "playerName": zod.string().min(1).max(createBattleBodyPlayerNameMax)
 })
+
+export const createBattleResponseBattleChallengeIdsMin = 3;
+export const createBattleResponseBattleChallengeIdsMax = 3;
+
+
 
 export const CreateBattleResponse = zod.object({
   "playerId": zod.string(),
   "battle": zod.object({
   "roomId": zod.string(),
-  "challengeId": zod.string(),
+  "challengeIds": zod.array(zod.string()).min(createBattleResponseBattleChallengeIdsMin).max(createBattleResponseBattleChallengeIdsMax),
   "status": zod.enum(['WAITING', 'ACTIVE', 'FINISHED']),
   "players": zod.array(zod.object({
   "id": zod.string(),
@@ -92,6 +97,7 @@ export const CreateBattleResponse = zod.object({
   "hearts": zod.number().int(),
   "points": zod.number().int(),
   "submissions": zod.number().int(),
+  "currentChallengeIndex": zod.number().int(),
   "connected": zod.boolean()
 })),
   "secondsRemaining": zod.number().int(),
@@ -99,6 +105,7 @@ export const CreateBattleResponse = zod.object({
   "winnerPlayerId": zod.string().nullable(),
   "submissions": zod.array(zod.object({
   "id": zod.string(),
+  "challengeId": zod.string(),
   "playerId": zod.string(),
   "playerName": zod.string(),
   "mode": zod.enum(['RUN', 'SUBMIT']),
@@ -136,11 +143,16 @@ export const GetBattleParams = zod.object({
   "playerId": zod.coerce.string()
 })
 
+export const getBattleResponseBattleChallengeIdsMin = 3;
+export const getBattleResponseBattleChallengeIdsMax = 3;
+
+
+
 export const GetBattleResponse = zod.object({
   "playerId": zod.string(),
   "battle": zod.object({
   "roomId": zod.string(),
-  "challengeId": zod.string(),
+  "challengeIds": zod.array(zod.string()).min(getBattleResponseBattleChallengeIdsMin).max(getBattleResponseBattleChallengeIdsMax),
   "status": zod.enum(['WAITING', 'ACTIVE', 'FINISHED']),
   "players": zod.array(zod.object({
   "id": zod.string(),
@@ -148,6 +160,7 @@ export const GetBattleResponse = zod.object({
   "hearts": zod.number().int(),
   "points": zod.number().int(),
   "submissions": zod.number().int(),
+  "currentChallengeIndex": zod.number().int(),
   "connected": zod.boolean()
 })),
   "secondsRemaining": zod.number().int(),
@@ -155,6 +168,7 @@ export const GetBattleResponse = zod.object({
   "winnerPlayerId": zod.string().nullable(),
   "submissions": zod.array(zod.object({
   "id": zod.string(),
+  "challengeId": zod.string(),
   "playerId": zod.string(),
   "playerName": zod.string(),
   "mode": zod.enum(['RUN', 'SUBMIT']),
@@ -199,11 +213,16 @@ export const JoinBattleBody = zod.object({
   "playerName": zod.string().min(1).max(joinBattleBodyPlayerNameMax)
 })
 
+export const joinBattleResponseBattleChallengeIdsMin = 3;
+export const joinBattleResponseBattleChallengeIdsMax = 3;
+
+
+
 export const JoinBattleResponse = zod.object({
   "playerId": zod.string(),
   "battle": zod.object({
   "roomId": zod.string(),
-  "challengeId": zod.string(),
+  "challengeIds": zod.array(zod.string()).min(joinBattleResponseBattleChallengeIdsMin).max(joinBattleResponseBattleChallengeIdsMax),
   "status": zod.enum(['WAITING', 'ACTIVE', 'FINISHED']),
   "players": zod.array(zod.object({
   "id": zod.string(),
@@ -211,6 +230,7 @@ export const JoinBattleResponse = zod.object({
   "hearts": zod.number().int(),
   "points": zod.number().int(),
   "submissions": zod.number().int(),
+  "currentChallengeIndex": zod.number().int(),
   "connected": zod.boolean()
 })),
   "secondsRemaining": zod.number().int(),
@@ -218,6 +238,7 @@ export const JoinBattleResponse = zod.object({
   "winnerPlayerId": zod.string().nullable(),
   "submissions": zod.array(zod.object({
   "id": zod.string(),
+  "challengeId": zod.string(),
   "playerId": zod.string(),
   "playerName": zod.string(),
   "mode": zod.enum(['RUN', 'SUBMIT']),
@@ -260,9 +281,15 @@ export const submitCodeBodyCodeMax = 12000;
 
 export const SubmitCodeBody = zod.object({
   "playerId": zod.string(),
+  "challengeId": zod.string(),
   "code": zod.string().max(submitCodeBodyCodeMax),
   "mode": zod.enum(['RUN', 'SUBMIT'])
 })
+
+export const submitCodeResponseBattleChallengeIdsMin = 3;
+export const submitCodeResponseBattleChallengeIdsMax = 3;
+
+
 
 export const SubmitCodeResponse = zod.object({
   "verdict": zod.enum(['AC', 'WA', 'TLE', 'MLE', 'RE', 'CE']),
@@ -275,7 +302,7 @@ export const SubmitCodeResponse = zod.object({
   "pointsAwarded": zod.number().int(),
   "battle": zod.object({
   "roomId": zod.string(),
-  "challengeId": zod.string(),
+  "challengeIds": zod.array(zod.string()).min(submitCodeResponseBattleChallengeIdsMin).max(submitCodeResponseBattleChallengeIdsMax),
   "status": zod.enum(['WAITING', 'ACTIVE', 'FINISHED']),
   "players": zod.array(zod.object({
   "id": zod.string(),
@@ -283,6 +310,7 @@ export const SubmitCodeResponse = zod.object({
   "hearts": zod.number().int(),
   "points": zod.number().int(),
   "submissions": zod.number().int(),
+  "currentChallengeIndex": zod.number().int(),
   "connected": zod.boolean()
 })),
   "secondsRemaining": zod.number().int(),
@@ -290,6 +318,7 @@ export const SubmitCodeResponse = zod.object({
   "winnerPlayerId": zod.string().nullable(),
   "submissions": zod.array(zod.object({
   "id": zod.string(),
+  "challengeId": zod.string(),
   "playerId": zod.string(),
   "playerName": zod.string(),
   "mode": zod.enum(['RUN', 'SUBMIT']),

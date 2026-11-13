@@ -236,13 +236,17 @@ components:
           type: integer
         submissions:
           type: integer
+        currentChallengeIndex:
+          type: integer
         connected:
           type: boolean
-      required: [id, name, hearts, points, submissions, connected]
+      required: [id, name, hearts, points, submissions, currentChallengeIndex, connected]
     BattleLogEntry:
       type: object
       properties:
         id:
+          type: string
+        challengeId:
           type: string
         playerId:
           type: string
@@ -259,14 +263,19 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, playerId, playerName, mode, verdict, pointsAwarded, createdAt]
+      required: [id, challengeId, playerId, playerName, mode, verdict, pointsAwarded, createdAt]
     Battle:
       type: object
       properties:
         roomId:
           type: string
-        challengeId:
-          type: string
+        challengeIds:
+          type: array
+          minItems: 3
+          maxItems: 3
+          uniqueItems: true
+          items:
+            type: string
         status:
           type: string
           enum: [WAITING, ACTIVE, FINISHED]
@@ -284,7 +293,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BattleLogEntry"
-      required: [roomId, challengeId, status, players, secondsRemaining, elapsedSeconds, winnerPlayerId, submissions]
+      required: [roomId, challengeIds, status, players, secondsRemaining, elapsedSeconds, winnerPlayerId, submissions]
     BattleSession:
       type: object
       properties:
@@ -298,13 +307,14 @@ components:
     CreateBattleInput:
       type: object
       properties:
-        challengeId:
+        difficulty:
           type: string
+          enum: [BRONZE, SILVER, GOLD]
         playerName:
           type: string
           minLength: 1
           maxLength: 24
-      required: [challengeId, playerName]
+      required: [difficulty, playerName]
     JoinBattleInput:
       type: object
       properties:
@@ -318,13 +328,15 @@ components:
       properties:
         playerId:
           type: string
+        challengeId:
+          type: string
         code:
           type: string
           maxLength: 12000
         mode:
           type: string
           enum: [RUN, SUBMIT]
-      required: [playerId, code, mode]
+      required: [playerId, challengeId, code, mode]
     SubmissionResult:
       type: object
       properties:

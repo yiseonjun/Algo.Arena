@@ -45,6 +45,7 @@ export interface BattlePlayer {
   hearts: number;
   points: number;
   submissions: number;
+  currentChallengeIndex: number;
   connected: boolean;
 }
 
@@ -70,6 +71,7 @@ export const BattleLogEntryVerdict = {
 
 export interface BattleLogEntry {
   id: string;
+  challengeId: string;
   playerId: string;
   playerName: string;
   mode: BattleLogEntryMode;
@@ -89,7 +91,11 @@ export const BattleStatus = {
 
 export interface Battle {
   roomId: string;
-  challengeId: string;
+  /**
+     * @minItems 3
+     * @maxItems 3
+     */
+  challengeIds: string[];
   status: BattleStatus;
   players: BattlePlayer[];
   secondsRemaining: number;
@@ -105,8 +111,17 @@ export interface BattleSession {
   challenge: Challenge;
 }
 
+export type CreateBattleInputDifficulty = typeof CreateBattleInputDifficulty[keyof typeof CreateBattleInputDifficulty];
+
+
+export const CreateBattleInputDifficulty = {
+  BRONZE: 'BRONZE',
+  SILVER: 'SILVER',
+  GOLD: 'GOLD',
+} as const;
+
 export interface CreateBattleInput {
-  challengeId: string;
+  difficulty: CreateBattleInputDifficulty;
   /**
      * @minLength 1
      * @maxLength 24
@@ -132,6 +147,7 @@ export const SubmissionInputMode = {
 
 export interface SubmissionInput {
   playerId: string;
+  challengeId: string;
   /** @maxLength 12000 */
   code: string;
   mode: SubmissionInputMode;

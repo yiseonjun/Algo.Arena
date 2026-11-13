@@ -30,7 +30,7 @@ ALLOWED_NODE_TYPES = {
     ast.Not, ast.BoolOp, ast.And, ast.Or, ast.Compare, ast.Eq, ast.NotEq,
     ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.In, ast.NotIn, ast.Call,
     ast.Subscript, ast.Slice, ast.IfExp, ast.Break, ast.Continue,
-    ast.ListComp, ast.SetComp, ast.DictComp, ast.comprehension,
+    ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp, ast.comprehension,
     ast.keyword, ast.Attribute, ast.Pass,
 }
 

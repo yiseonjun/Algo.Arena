@@ -17,6 +17,7 @@ export * from './challenge';
 export * from './challengeDifficulty';
 export * from './challengeExample';
 export * from './createBattleInput';
+export * from './createBattleInputDifficulty';
 export * from './healthStatus';
 export * from './joinBattleInput';
 export * from './submissionInput';
