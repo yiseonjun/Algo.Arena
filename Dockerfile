@@ -27,8 +27,8 @@ RUN mkdir -p artifacts/api-server/dist/public && \
     cp -r artifacts/algoarena/dist/* artifacts/api-server/dist/public/
 
 # 서버 포트 설정 (Render 기본 포트 10000 또는 8080)
-ENV PORT=8080
-EXPOSE 8080
+ENV PORT=7860
+EXPOSE 7860
 
 # API 서버 실행
 CMD ["node", "artifacts/api-server/dist/index.mjs"]
