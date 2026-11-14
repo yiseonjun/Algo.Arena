@@ -16,8 +16,8 @@ COPY lib ./lib
 COPY scripts ./scripts
 COPY tsconfig*.json ./
 
-# 전체 패키지 설치 (Replit 전용 리눅스 오버라이드 무시하고 현재 환경에 맞게 설치)
-RUN pnpm install --no-frozen-lockfile
+# 💡 [수정됨] 도커 환경에서 esbuild 등의 빌드 스크립트를 허용하도록 옵션 추가
+RUN pnpm install --no-frozen-lockfile --config.only-built-dependencies=esbuild
 
 # 프론트엔드(algoarena) 및 백엔드(api-server) 빌드
 RUN pnpm run build
@@ -26,7 +26,7 @@ RUN pnpm run build
 RUN mkdir -p artifacts/api-server/dist/public && \
     cp -r artifacts/algoarena/dist/* artifacts/api-server/dist/public/
 
-# 서버 포트 설정 (Render 기본 포트 10000 또는 8080)
+# 서버 포트 설정 (Render는 자체적으로 PORT 환경변수를 주입하므로 기본값 설정용)
 ENV PORT=7860
 EXPOSE 7860
 
